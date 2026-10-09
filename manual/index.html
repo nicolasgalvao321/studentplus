@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Técnico - Student+</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+    <h1>Student+</h1>
+    <p>Manual Técnico e Guia de Manutenção do Projeto</p>
+</header>
+
+<nav>
+    <a href="#apresentacao">Apresentação</a>
+    <a href="#tecnologias">Tecnologias</a>
+    <a href="#instalacao">Instalação</a>
+    <a href="#estrutura">Estrutura de Pastas</a>
+    <a href="#firestore">Banco de Dados</a>
+    <a href="#manutencao">Manutenção</a>
+</nav>
+
+<main class="container">
+    <section id="apresentacao">
+        <h2>1. Apresentação e Objetivo</h2>
+        <p>O <strong>Student+</strong> é uma aplicação desenvolvida em Flutter para gestão e organização da vida escolar dos estudantes. Permite o controlo de disciplinas, acompanhamento de tarefas com estado de conclusão e um painel de resumo em tempo real.</p>
+    </section>
+
+    <section id="tecnologias">
+        <h2>2. Tecnologias Utilizadas</h2>
+        <ul>
+            <li><strong>Flutter & Dart:</strong> Framework e linguagem para desenvolvimento mobile/web.</li>
+            <li><strong>Firebase Authentication:</strong> Registo e login seguro de utilizadores.</li>
+            <li><strong>Cloud Firestore:</strong> Banco de dados NoSQL em tempo real.</li>
+            <li><strong>HTML5 & CSS3:</strong> Criação desta documentação técnica.</li>
+        </ul>
+    </section>
+
+    <section id="instalacao">
+        <h2>3. Requisitos e Instalação</h2>
+        <ol>
+            <li>Instalar o SDK do Flutter (versão 3.x ou superior).</li>
+            <li>Clonar este repositório do GitHub.</li>
+            <li>Executar o comando <code>flutter pub get</code> para baixar as dependências.</li>
+            <li>Executar a aplicação com <code>flutter run</code>.</li>
+        </ol>
+    </section>
+
+    <section id="estrutura">
+        <h2>4. Estrutura de Pastas do Código</h2>
+        <pre>
+lib/
+├── models/       # Estruturas e modelos de dados
+├── screens/      # Ecrãs (Login, Register, Home, Disciplinas, Tarefas, Resumo)
+├── services/     # Serviços de integração (Firebase Auth e Cloud Firestore)
+└── main.dart     # Ponto de entrada da aplicação
+            </pre>
+    </section>
+
+    <section id="firestore">
+        <h2>5. Estrutura do Cloud Firestore</h2>
+        <p>Os dados estão organizados por utilizador (isolamento por UID):</p>
+        <ul>
+            <li><code>users/{uid}/disciplinas</code>: Guarda o nome, professor, faltas e limite.</li>
+            <li><code>users/{uid}/tarefas</code>: Guarda o título, disciplina, data limite e estado de conclusão.</li>
+        </ul>
+    </section>
+
+    <section id="manutencao">
+        <h2>6. Guia de Manutenção</h2>
+        <h3>Como alterar as cores principais do aplicativo?</h3>
+        <p>Abra os ficheiros dentro da pasta <code>lib/screens/</code> e modifique as cores hexadecimais principais:</p>
+        <ul>
+            <li><strong>Azul Académico (Principal):</strong> <code>Color(0xFF0E3B68)</code></li>
+            <li><strong>Laranja (Destaque):</strong> <code>Color(0xFFFF6B00)</code></li>
+        </ul>
+
+        <h3>Como adicionar um novo campo no formulário de Tarefas?</h3>
+        <ol>
+            <li>Adicione o novo controlador em <code>lib/screens/tarefas_screen.dart</code>.</li>
+            <li>Inclua o novo parâmetro no método <code>adicionarTarefa</code> em <code>lib/services/firestore_service.dart</code>.</li>
+        </ol>
+    </section>
+</main>
+
+<footer>
+    <p>Desenvolvido para o Projeto AV1 - Ensino Técnico em Informática</p>
+</footer>
+</body>
+</html>
