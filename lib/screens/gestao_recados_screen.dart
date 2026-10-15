@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/firestore_service.dart';
-import '../services/auth_service.dart';
 
 class GestaoRecadosScreen extends StatefulWidget {
-  final bool isProfessor; // Se verdadeiro, permite criar/eliminar recados
+  final bool isProfessor;
 
-  const GestaoRecadosScreen({super.key, this.isProfessor = true});
+  const GestaoRecadosScreen({super.key, this.isProfessor = false});
 
   @override
   State<GestaoRecadosScreen> createState() => _GestaoRecadosScreenState();
@@ -14,15 +14,43 @@ class GestaoRecadosScreen extends StatefulWidget {
 
 class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
   final FirestoreService _firestoreService = FirestoreService();
-  final AuthService _authService = AuthService();
 
   final TextEditingController _tituloController = TextEditingController();
   final TextEditingController _conteudoController = TextEditingController();
+  final TextEditingController _linkController = TextEditingController();
 
-  // Dialog/Modal para o Professor escrever um novo recado
+  Future<void> _abrirLink(String url) async {
+    final String urlTratada = url.startsWith('http://') || url.startsWith('https://')
+        ? url
+        : 'https://$url';
+    final Uri uri = Uri.parse(urlTratada);
+
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Não foi possível abrir o link.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao abrir link: $e')),
+        );
+      }
+    }
+  }
+
   void _mostrarDialogNovoRecado() {
     _tituloController.clear();
     _conteudoController.clear();
+    _linkController.clear();
 
     showModalBottomSheet(
       context: context,
@@ -44,7 +72,7 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
             children: [
               const Text(
                 'Novo Recado / Aviso',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -57,16 +85,26 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
               const SizedBox(height: 12),
               TextField(
                 controller: _conteudoController,
-                maxLines: 4,
+                maxLines: 3,
                 decoration: const InputDecoration(
-                  labelText: 'Mensagem / Conteúdo',
+                  labelText: 'Conteúdo do Recado',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _linkController,
+                decoration: const InputDecoration(
+                  labelText: 'Link / Anexo (Word, Vídeo, Drive - opcional)',
+                  hintText: 'https://...',
+                  prefixIcon: Icon(Icons.link),
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0E3B68),
+                  backgroundColor: Colors.amber.shade800,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
@@ -75,6 +113,7 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
                 onPressed: () async {
                   final titulo = _tituloController.text.trim();
                   final conteudo = _conteudoController.text.trim();
+                  final link = _linkController.text.trim();
 
                   if (titulo.isEmpty || conteudo.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -84,19 +123,11 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
                     return;
                   }
 
-                  // Obtém o nome do professor ou valor padrão
-                  final userDoc = await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(_authService.currentUser?.uid)
-                      .get();
-
-                  final String nomeProfessor =
-                      userDoc.data()?['nome'] ?? 'Professor';
-
                   await _firestoreService.enviarRecado(
                     titulo: titulo,
                     conteudo: conteudo,
-                    autorNome: nomeProfessor,
+                    autorNome: 'Professor',
+                    link: link,
                   );
 
                   if (mounted) {
@@ -119,53 +150,46 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Agenda de Recados'),
-        backgroundColor: const Color(0xFF0E3B68),
+        title: Text(widget.isProfessor ? 'Mural de Recados' : 'Recados'),
+        backgroundColor: Colors.amber.shade800,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestoreService.getRecados(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(
-              child: Text('Erro ao carregar recados: ${snapshot.error}'),
-            );
+            return Center(child: Text('Erro ao carregar: ${snapshot.error}'));
           }
-
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          final docs = snapshot.data?.docs ?? [];
+
+          if (docs.isEmpty) {
             return const Center(
-              child: Text('Nenhum recado na agenda até ao momento.'),
+              child: Text('Nenhum recado no mural.'),
             );
           }
 
-          final recados = snapshot.data!.docs;
-
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: recados.length,
+            itemCount: docs.length,
             itemBuilder: (context, index) {
-              final doc = recados[index];
-              final data = doc.data() as Map<String, dynamic>? ?? {};
+              final doc = docs[index];
+              final data = doc.data() as Map<String, dynamic>;
 
-              final String titulo = data['titulo'] ?? 'Sem título';
+              final String titulo = data['titulo'] ?? '';
               final String conteudo = data['conteudo'] ?? '';
-              final String autor = data['autorNome'] ?? 'Professor';
-              final Timestamp? dataTimestamp = data['criadoEm'] as Timestamp?;
-
-              String dataFormatada = 'Data indisponível';
-              if (dataTimestamp != null) {
-                final dt = dataTimestamp.toDate();
-                dataFormatada =
-                '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} às ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-              }
+              final String autorNome = data['autorNome'] ?? 'Professor';
+              final String link = data['link'] ?? '';
 
               return Card(
-                elevation: 3,
-                margin: const EdgeInsets.only(bottom: 16),
+                margin: const EdgeInsets.only(bottom: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -181,9 +205,8 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
                             child: Text(
                               titulo,
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF0E3B68),
                               ),
                             ),
                           ),
@@ -192,63 +215,72 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
                               icon: const Icon(Icons.delete_outline,
                                   color: Colors.red),
                               onPressed: () async {
-                                final confirmar = await showDialog<bool>(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('Eliminar Recado'),
-                                    content: const Text(
-                                        'Deseja apagar este recado da agenda?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx, false),
-                                        child: const Text('Cancelar'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx, true),
-                                        child: const Text('Eliminar',
-                                            style:
-                                            TextStyle(color: Colors.red)),
-                                      ),
-                                    ],
-                                  ),
-                                );
-
-                                if (confirmar == true) {
-                                  await _firestoreService
-                                      .deletarRecado(doc.id);
-                                }
+                                await _firestoreService.deletarRecado(doc.id);
                               },
                             ),
                         ],
                       ),
-                      const Divider(),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Por: $autorNome',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Text(
                         conteudo,
-                        style: const TextStyle(fontSize: 15, height: 1.3),
+                        style: const TextStyle(fontSize: 14),
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Por: $autor',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade700,
+                      if (link.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        InkWell(
+                          onTap: () => _abrirLink(link),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.amber.shade300,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.link,
+                                  size: 18,
+                                  color: Colors.amber.shade900,
+                                ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    'Abrir Anexo / Link (Vídeo / Documento)',
+                                    style: TextStyle(
+                                      color: Colors.amber.shade900,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.open_in_new,
+                                  size: 14,
+                                  color: Colors.amber.shade900,
+                                ),
+                              ],
                             ),
                           ),
-                          Text(
-                            dataFormatada,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -258,14 +290,10 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
         },
       ),
       floatingActionButton: widget.isProfessor
-          ? FloatingActionButton.extended(
+          ? FloatingActionButton(
         onPressed: _mostrarDialogNovoRecado,
-        backgroundColor: const Color(0xFF0E3B68),
-        icon: const Icon(Icons.add_comment, color: Colors.white),
-        label: const Text(
-          'Novo Recado',
-          style: TextStyle(color: Colors.white),
-        ),
+        backgroundColor: Colors.amber.shade800,
+        child: const Icon(Icons.add, color: Colors.white),
       )
           : null,
     );

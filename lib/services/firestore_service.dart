@@ -20,6 +20,7 @@ class FirestoreService {
         .snapshots();
   }
 
+  // Atalho para consulta por UID do aluno
   Stream<QuerySnapshot> getDisciplinasDoAluno(String alunoUid) {
     return getDisciplinas(alunoUid);
   }
@@ -114,7 +115,7 @@ class FirestoreService {
   }
 
   // =========================================================================
-  // MÉTODOS DO PROFESSOR (LISTAR ALUNOS E FALTAS)
+  // MÉTODOS DO PROFESSOR (LISTAR ALUNOS E GESTÃO DE FALTAS)
   // =========================================================================
 
   Stream<QuerySnapshot> getAlunos() {
@@ -138,7 +139,7 @@ class FirestoreService {
   }
 
   // =========================================================================
-  // RECADOS E CALENDÁRIO
+  // MURAL DE RECADOS (COM SUPORTE A LINKS / ANEXOS)
   // =========================================================================
 
   Stream<QuerySnapshot> getRecados() {
@@ -152,11 +153,13 @@ class FirestoreService {
     required String titulo,
     required String conteudo,
     required String autorNome,
+    String? link,
   }) async {
     await _db.collection('recados').add({
       'titulo': titulo,
       'conteudo': conteudo,
       'autorNome': autorNome,
+      'link': link ?? '',
       'criadoEm': FieldValue.serverTimestamp(),
     });
   }
@@ -164,6 +167,10 @@ class FirestoreService {
   Future<void> deletarRecado(String recadoId) async {
     await _db.collection('recados').doc(recadoId).delete();
   }
+
+  // =========================================================================
+  // CALENDÁRIO (PROVAS E COMPROMISSOS)
+  // =========================================================================
 
   Stream<QuerySnapshot> getEventos() {
     return _db
