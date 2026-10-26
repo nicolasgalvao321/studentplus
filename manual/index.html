@@ -24,16 +24,17 @@
 <main class="container">
     <section id="apresentacao">
         <h2>1. Apresentação e Objetivo</h2>
-        <p>O <strong>Student+</strong> é uma aplicação desenvolvida em Flutter para gestão e organização da vida escolar dos estudantes. Permite o controlo de disciplinas, acompanhamento de tarefas com estado de conclusão e um painel de resumo em tempo real.</p>
+        <p>O <strong>Student+</strong> é um ecossistema completo de gestão e organização escolar desenvolvido em Flutter. A plataforma integra em tempo real quatro perfis de acesso distintos: <strong>Aluno</strong>, <strong>Professor</strong>, <strong>Responsável (Pais)</strong> e <strong>Funcionário (Secretaria/Staff)</strong>.</p>
+        <p>Entre os principais recursos, o sistema oferece controle de frequências com alertas visuais, acompanhamento de tarefas, resumo de desempenho, mural de recados, cardápio da cantina escolar, gestão financeira com emissão de boletos, escala de limpeza para a equipe administrativa e um módulo de chat em tempo real estilo WhatsApp para comunicação direta entre a comunidade escolar.</p>
     </section>
 
     <section id="tecnologias">
         <h2>2. Tecnologias Utilizadas</h2>
         <ul>
-            <li><strong>Flutter & Dart:</strong> Framework e linguagem para desenvolvimento mobile/web.</li>
-            <li><strong>Firebase Authentication:</strong> Registo e login seguro de utilizadores.</li>
-            <li><strong>Cloud Firestore:</strong> Banco de dados NoSQL em tempo real.</li>
-            <li><strong>HTML5 & CSS3:</strong> Criação desta documentação técnica.</li>
+            <li><strong>Flutter & Dart:</strong> Framework e linguagem para desenvolvimento multiplataforma (Web/Mobile).</li>
+            <li><strong>Firebase Authentication:</strong> Registro, login seguro e controle de acesso baseado em papéis (roles).</li>
+            <li><strong>Cloud Firestore:</strong> Banco de dados NoSQL em tempo real para sincronização de notas, boletos, recados e mensagens.</li>
+            <li><strong>HTML5 & CSS3:</strong> Linguagens estruturais utilizadas para a criação deste manual técnico.</li>
         </ul>
     </section>
 
@@ -41,9 +42,9 @@
         <h2>3. Requisitos e Instalação</h2>
         <ol>
             <li>Instalar o SDK do Flutter (versão 3.x ou superior).</li>
-            <li>Clonar este repositório do GitHub.</li>
-            <li>Executar o comando <code>flutter pub get</code> para baixar as dependências.</li>
-            <li>Executar a aplicação com <code>flutter run</code>.</li>
+            <li>Clonar este repositório do projeto.</li>
+            <li>Executar o comando <code>flutter pub get</code> no terminal para baixar todas as dependências.</li>
+            <li>Executar a aplicação com <code>flutter run</code> no emulador ou navegador Web.</li>
         </ol>
     </section>
 
@@ -51,36 +52,65 @@
         <h2>4. Estrutura de Pastas do Código</h2>
         <pre>
 lib/
-├── models/       # Estruturas e modelos de dados
-├── screens/      # Ecrãs (Login, Register, Home, Disciplinas, Tarefas, Resumo)
-├── services/     # Serviços de integração (Firebase Auth e Cloud Firestore)
-└── main.dart     # Ponto de entrada da aplicação
-            </pre>
+├── models/                     # Estruturas e modelos de dados do sistema
+├── services/                   # Serviços de integração com backend
+│   ├── auth_service.dart       # Autenticação via Firebase Auth
+│   └── firestore_service.dart   # Métodos do Cloud Firestore (CRUDs e Streams)
+├── screens/                    # Telas da aplicação organizadas por módulo
+│   ├── login_screen.dart                 # Autenticação unificada de usuários
+│   ├── register_screen.dart              # Cadastro de novos perfis no banco
+│   ├── home_screen.dart                  # Portal principal do Aluno
+│   ├── professor_home_screen.dart        # Painel de gestão do Professor
+│   ├── responsavel_home_screen.dart      # Painel do Responsável (Financeiro/Notas)
+│   ├── funcionario_home_screen.dart      # Painel da Secretaria/Staff (Limpeza/Boletos)
+│   ├── disciplinas_screen.dart          # Frequência, limites de faltas e matérias
+│   ├── tarefas_screen.dart              # Acompanhamento e entrega de tarefas
+│   ├── resumo_screen.dart               # Gráficos e indicadores de desempenho
+│   ├── gestao_recados_screen.dart       # Mural de avisos e comunicados gerais
+│   ├── calendario_screen.dart           # Calendário acadêmico de eventos
+│   ├── cantina_screen.dart              # Cardápio e gestão de itens da cantina
+│   ├── lista_chats_screen.dart          # Lista de conversas ativas (Chat)
+│   └── chat_conversa_screen.dart        # Interface de bate-papo estilo WhatsApp
+└── main.dart                   # Ponto de entrada principal do aplicativo
+        </pre>
     </section>
 
     <section id="firestore">
         <h2>5. Estrutura do Cloud Firestore</h2>
-        <p>Os dados estão organizados por utilizador (isolamento por UID):</p>
+        <p>Os dados são gerenciados com regras de acesso por perfil e isolamento de sessão:</p>
         <ul>
-            <li><code>users/{uid}/disciplinas</code>: Guarda o nome, professor, faltas e limite.</li>
-            <li><code>users/{uid}/tarefas</code>: Guarda o título, disciplina, data limite e estado de conclusão.</li>
+            <li><code>users/{uid}</code>: Guarda o perfil do usuário (<code>role</code>: aluno, professor, responsavel, funcionario), nome e e-mail.</li>
+            <li><code>users/{alunoUid}/disciplinas</code>: Armazena o nome da matéria, professor, quantidade de faltas e limite máximo (<code>maxFaltas</code>).</li>
+            <li><code>users/{alunoUid}/tarefas</code>: Armazena o título da atividade, disciplina vinculada, prazo e status de conclusão.</li>
+            <li><code>users/{alunoUid}/mensalidades</code>: Registra a lista de boletos (valor, vencimento, título e status de pagamento <code>pago</code>/<code>pendente</code>).</li>
+            <li><code>users/{alunoUid}/justificativas</code>: Registra pedidos de abono de faltas e links de atestados enviados à Secretaria.</li>
+            <li><code>cantina</code>: Coleção global contendo a lista de alimentos cadastrados no cardápio e seus respectivos preços.</li>
+            <li><code>recados</code>: Coleção contendo avisos gerais e comunicados publicados por professores ou coordenação.</li>
+            <li><code>chats</code>: Coleção de conversas com lista de <code>participantes</code>, nomes dos envolvidos, <code>ultimaMensagem</code> e data de atualização.</li>
+            <li><code>chats/{chatId}/mensagens</code>: Subcoleção que contém o histórico de mensagens enviadas (<code>remetenteUid</code>, <code>texto</code> e timestamp).</li>
         </ul>
     </section>
 
     <section id="manutencao">
         <h2>6. Guia de Manutenção</h2>
         <h3>Como alterar as cores principais do aplicativo?</h3>
-        <p>Abra os ficheiros dentro da pasta <code>lib/screens/</code> e modifique as cores hexadecimais principais:</p>
+        <p>Abra os arquivos em <code>lib/screens/</code> ou o tema principal e modifique os códigos de cores hexadecimais:</p>
         <ul>
-            <li><strong>Azul Académico (Principal):</strong> <code>Color(0xFF0E3B68)</code></li>
-            <li><strong>Laranja (Destaque):</strong> <code>Color(0xFFFF6B00)</code></li>
+            <li><strong>Azul Acadêmico (Aluno/Tema Base):</strong> <code>Color(0xFF0E3B68)</code></li>
+            <li><strong>Verde Mensagens (WhatsApp):</strong> <code>Color(0xFF075E54)</code> e <code>Color(0xFF25D366)</code></li>
+            <li><strong>Laranja (Destaques e Cantina):</strong> <code>Color(0xFFFF6B00)</code> ou <code>Colors.orange.shade800</code></li>
+            <li><strong>Roxo / Azul Escuro (Módulo Staff / Professor):</strong> <code>Colors.purple.shade800</code> e <code>Colors.indigo</code></li>
         </ul>
 
-        <h3>Como adicionar um novo campo no formulário de Tarefas?</h3>
-        <ol>
-            <li>Adicione o novo controlador em <code>lib/screens/tarefas_screen.dart</code>.</li>
-            <li>Inclua o novo parâmetro no método <code>adicionarTarefa</code> em <code>lib/services/firestore_service.dart</code>.</li>
-        </ol>
+        <h3>Como alterar as permissões de edição da Cantina Escolar?</h3>
+        <p>A tela <code>CantinaScreen</code> utiliza a propriedade <code>isStaff</code> para controlar a exibição dos controles de adição e remoção:</p>
+        <ul>
+            <li><strong>Modo Edição (Funcionários/Staff):</strong> Chame a tela com <code>CantinaScreen(isStaff: true)</code>. O botão flutuante "+ Novo Lanche" e os ícones de remoção estarão visíveis.</li>
+            <li><strong>Modo Leitura (Alunos/Professores):</strong> Chame a tela com <code>CantinaScreen(isStaff: false)</code>. O cardápio será exibido apenas para consulta.</li>
+        </ul>
+
+        <h3>Como garantir o isolamento correto das conversas no Chat?</h3>
+        <p>Ao abrir a tela <code>ListaChatsScreen</code> a partir dos painéis principais, passe sempre o UID e o Nome do usuário ativo via construtor (ex: <code>ListaChatsScreen(meuUid: usuarioUid, meuNome: usuarioNome)</code>). Isso impede que a troca de contas no navegador sobreponha a sessão da aba.</p>
     </section>
 </main>
 

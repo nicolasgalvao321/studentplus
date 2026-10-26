@@ -114,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const Text(
-                  'Gestão Escolar Conectada',
+                  'Gestão Escolar do Colégio Progresso',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
