@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firestore_service.dart';
 import 'login_screen.dart';
 import 'disciplinas_screen.dart';
+import 'lista_chats_screen.dart';
 
 class ResponsavelHomeScreen extends StatefulWidget {
   const ResponsavelHomeScreen({super.key});
@@ -143,6 +144,23 @@ class _ResponsavelHomeScreenState extends State<ResponsavelHomeScreen> {
                   icone: Icons.attach_money,
                   cor: Colors.green,
                   onTap: () => _abrirModalFinanceiro(context),
+                ),
+                _buildMenuCard(
+                  context,
+                  titulo: 'Mensagens / Chat',
+                  icone: Icons.chat_bubble_outline,
+                  cor: const Color(0xFF075E54),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ListaChatsScreen(
+                          meuUid: _uid,
+                          meuNome: 'Responsável',
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 _buildMenuCard(
                   context,

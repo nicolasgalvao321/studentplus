@@ -9,6 +9,7 @@ import 'resumo_screen.dart';
 import 'gestao_recados_screen.dart';
 import 'calendario_screen.dart';
 import 'cantina_screen.dart';
+import 'lista_chats_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -189,6 +190,23 @@ class HomeScreen extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (context) =>
                                 const GestaoRecadosScreen(isProfessor: false),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildMenuCard(
+                          context: context,
+                          title: 'MENSAGENS',
+                          icon: Icons.chat_bubble_outline,
+                          color: const Color(0xFF075E54),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ListaChatsScreen(
+                                  meuUid: alunoUid,
+                                  meuNome: 'Aluno',
+                                ),
                               ),
                             );
                           },

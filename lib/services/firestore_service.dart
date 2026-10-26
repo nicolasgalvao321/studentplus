@@ -308,11 +308,11 @@ class FirestoreService {
     });
   }
 
-// ==========================================
-// 7. CANTINA E ESCALA DE LIMPEZA
-// ==========================================
+  // ==========================================
+  // 7. CANTINA E ESCALA DE LIMPEZA
+  // ==========================================
 
-// Buscar itens do cardápio da cantina
+  // Buscar itens do cardápio da cantina
   Stream<QuerySnapshot> getCardapioCantina() {
     return _db
         .collection('cantina')
@@ -320,7 +320,7 @@ class FirestoreService {
         .snapshots();
   }
 
-// Adicionar novo lanche (Somente Staff / Funcionários)
+  // Adicionar novo lanche (Somente Staff / Funcionários)
   Future<void> addLancheCantina(String nome, double preco) async {
     await _db.collection('cantina').add({
       'nome': nome,
@@ -329,8 +329,91 @@ class FirestoreService {
     });
   }
 
-// Deletar lanche da cantina
+  // Deletar lanche da cantina
   Future<void> deletarLancheCantina(String docId) async {
     await _db.collection('cantina').doc(docId).delete();
+  }
+
+  // ==========================================
+  // 8. CHAT / MENSAGENS EM TEMPO REAL
+  // ==========================================
+
+  // Buscar todas as conversas do usuário atual sem exigir índice composto
+  Stream<QuerySnapshot> getMinhasConversas(String meuUid) {
+    return _db
+        .collection('chats')
+        .where('participantes', arrayContains: meuUid)
+        .snapshots();
+  }
+
+  // Buscar ou criar o ID de uma conversa entre dois usuários
+  Future<String> obterOuCriarChat({
+    required String meuUid,
+    required String meuNome,
+    required String outroUid,
+    required String outroNome,
+  }) async {
+    // Procura se já existe um chat entre os dois
+    var query = await _db
+        .collection('chats')
+        .where('participantes', arrayContains: meuUid)
+        .get();
+
+    for (var doc in query.docs) {
+      List participantes = doc.get('participantes') ?? [];
+      if (participantes.contains(outroUid)) {
+        return doc.id;
+      }
+    }
+
+    // Se não existir, cria uma nova conversa
+    var novochat = await _db.collection('chats').add({
+      'participantes': [meuUid, outroUid],
+      'nomes': {
+        meuUid: meuNome,
+        outroUid: outroNome,
+      },
+      'ultimaMensagem': 'Conversa iniciada',
+      'atualizadoEm': FieldValue.serverTimestamp(),
+    });
+
+    return novochat.id;
+  }
+
+  // Buscar mensagens de um chat específico em tempo real
+  Stream<QuerySnapshot> getMensagensChat(String chatId) {
+    return _db
+        .collection('chats')
+        .doc(chatId)
+        .collection('mensagens')
+        .orderBy('enviadoEm', descending: true)
+        .snapshots();
+  }
+
+  // Enviar uma nova mensagem
+  Future<void> enviarMensagem({
+    required String chatId,
+    required String remetenteUid,
+    required String texto,
+  }) async {
+    if (texto.trim().isEmpty) return;
+
+    // 1. Salva a mensagem na subcoleção
+    await _db.collection('chats').doc(chatId).collection('mensagens').add({
+      'remetenteUid': remetenteUid,
+      'texto': texto.trim(),
+      'enviadoEm': FieldValue.serverTimestamp(),
+    });
+
+    // 2. Atualiza o resumo da última mensagem na conversa
+    await _db.collection('chats').doc(chatId).update({
+      'ultimaMensagem': texto.trim(),
+      'atualizadoEm': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // Buscar lista de contatos disponíveis para conversar (Professores, Pais, Staff e Alunos)
+  Stream<QuerySnapshot> getContatosDisponiveis() {
+    return _db.collection('users').snapshots();
   }
 }

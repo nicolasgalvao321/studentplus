@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
 import 'gestao_faltas_screen.dart';
@@ -6,6 +7,8 @@ import 'gestao_recados_screen.dart';
 import 'calendario_screen.dart';
 import 'selecao_aluno_screen.dart';
 import 'cantina_screen.dart';
+import 'disciplinas_screen.dart';
+import 'lista_chats_screen.dart';
 
 class ProfessorHomeScreen extends StatelessWidget {
   const ProfessorHomeScreen({super.key});
@@ -76,14 +79,12 @@ class ProfessorHomeScreen extends StatelessWidget {
                     context: context,
                     title: 'CADASTRAR DISCIPLINAS',
                     icon: Icons.book,
-                    color: Colors.blue,
+                    color: Colors.indigo,
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const SelecaoAlunoScreen(
-                            tipoSelecao: TipoSelecao.disciplinas,
-                          ),
+                          builder: (_) => const DisciplinasScreen(isProfessor: true), // HABILITA MÓDULO DE CADASTRO
                         ),
                       );
                     },
@@ -129,6 +130,23 @@ class ProfessorHomeScreen extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (_) => const CantinaScreen(isStaff: false), // SOMENTE LEITURA
+                        ),
+                      );
+                    },
+                  ),
+                  _buildMenuCard(
+                    context: context,
+                    title: 'MENSAGENS',
+                    icon: Icons.chat_bubble_outline,
+                    color: const Color(0xFF075E54),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ListaChatsScreen(
+                            meuUid: FirebaseAuth.instance.currentUser?.uid ?? '',
+                            meuNome: 'Professor',
+                          ),
                         ),
                       );
                     },

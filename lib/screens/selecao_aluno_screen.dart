@@ -75,7 +75,6 @@ class SelecaoAlunoScreen extends StatelessWidget {
                           builder: (context) => DisciplinasScreen(
                             isProfessor: true,
                             alunoUid: doc.id,
-                            alunoNome: nome,
                           ),
                         ),
                       );

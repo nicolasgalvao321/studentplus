@@ -5,6 +5,7 @@ import '../services/firestore_service.dart';
 import 'login_screen.dart';
 import 'gestao_recados_screen.dart';
 import 'cantina_screen.dart';
+import 'lista_chats_screen.dart';
 
 class FuncionarioHomeScreen extends StatefulWidget {
   const FuncionarioHomeScreen({super.key});
@@ -136,6 +137,24 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
                   icone: Icons.request_quote,
                   cor: Colors.indigo,
                   onTap: () => _abrirModalGerarBoleto(context),
+                ),
+                _buildCardMenu(
+                  context,
+                  titulo: 'Mensagens / Chat',
+                  subtitulo: 'Conversa direta com pais',
+                  icone: Icons.chat_bubble_outline,
+                  cor: const Color(0xFF075E54),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ListaChatsScreen(
+                          meuUid: FirebaseAuth.instance.currentUser?.uid ?? '',
+                          meuNome: 'Secretaria / Staff',
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 _buildCardMenu(
                   context,
