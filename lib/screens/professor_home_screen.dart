@@ -5,6 +5,7 @@ import 'gestao_faltas_screen.dart';
 import 'gestao_recados_screen.dart';
 import 'calendario_screen.dart';
 import 'selecao_aluno_screen.dart';
+import 'cantina_screen.dart';
 
 class ProfessorHomeScreen extends StatelessWidget {
   const ProfessorHomeScreen({super.key});
@@ -120,6 +121,20 @@ class ProfessorHomeScreen extends StatelessWidget {
                   ),
                   _buildMenuCard(
                     context: context,
+                    title: 'CANTINA',
+                    icon: Icons.fastfood,
+                    color: Colors.orange.shade800,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CantinaScreen(isStaff: false), // SOMENTE LEITURA
+                        ),
+                      );
+                    },
+                  ),
+                  _buildMenuCard(
+                    context: context,
                     title: 'CALENDÁRIO',
                     icon: Icons.calendar_month,
                     color: Colors.deepOrange,
@@ -158,7 +173,7 @@ class ProfessorHomeScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.15),
+              color: Colors.grey.withValues(alpha: 0.15),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -170,7 +185,7 @@ class ProfessorHomeScreen extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundColor: color.withOpacity(0.15),
+              backgroundColor: color.withValues(alpha: 0.15),
               child: Icon(icon, color: color, size: 30),
             ),
             const SizedBox(height: 12),

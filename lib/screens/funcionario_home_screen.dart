@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firestore_service.dart';
 import 'login_screen.dart';
 import 'gestao_recados_screen.dart';
+import 'cantina_screen.dart';
 
 class FuncionarioHomeScreen extends StatefulWidget {
   const FuncionarioHomeScreen({super.key});
@@ -26,10 +27,10 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
+              final nav = Navigator.of(context);
               await FirebaseAuth.instance.signOut();
               if (mounted) {
-                Navigator.pushReplacement(
-                  context,
+                nav.pushReplacement(
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                 );
               }
@@ -82,6 +83,29 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
               mainAxisSpacing: 12,
               childAspectRatio: 1.1,
               children: [
+                _buildCardMenu(
+                  context,
+                  titulo: 'Escala de Limpeza',
+                  subtitulo: 'Horários dos banheiros',
+                  icone: Icons.cleaning_services,
+                  cor: Colors.cyan.shade800,
+                  onTap: () => _abrirModalEscalaLimpeza(context),
+                ),
+                _buildCardMenu(
+                  context,
+                  titulo: 'Gerenciar Cantina',
+                  subtitulo: 'Cardápio e preços',
+                  icone: Icons.fastfood,
+                  cor: Colors.orange.shade800,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CantinaScreen(isStaff: true),
+                      ),
+                    );
+                  },
+                ),
                 _buildCardMenu(
                   context,
                   titulo: 'Aprovar Atestados',
@@ -148,7 +172,7 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircleAvatar(backgroundColor: cor.withOpacity(0.15), child: Icon(icone, color: cor)),
+              CircleAvatar(backgroundColor: cor.withValues(alpha: 0.15), child: Icon(icone, color: cor)),
               const SizedBox(height: 8),
               Text(titulo, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               const SizedBox(height: 2),
@@ -160,6 +184,98 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
     );
   }
 
+  // Modal 1: Escala Organizacional de Limpeza dos Banheiros
+  void _abrirModalEscalaLimpeza(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Horários e Escala de Limpeza', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Organização dos setores da equipe de limpeza', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const Divider(),
+            Expanded(
+              child: ListView(
+                children: [
+                  _buildCardSetorLimpeza(
+                    setor: 'Banheiro de Baixo (Térreo)',
+                    responsavel: 'Equipe Turno A',
+                    horarios: ['07:30', '10:15 (Pós-recreio)', '14:00', '17:30'],
+                    cor: Colors.blue,
+                  ),
+                  _buildCardSetorLimpeza(
+                    setor: 'Banheiro de Cima (1º Andar)',
+                    responsavel: 'Equipe Turno B',
+                    horarios: ['08:00', '10:45 (Pós-recreio)', '14:30', '18:00'],
+                    cor: Colors.teal,
+                  ),
+                  _buildCardSetorLimpeza(
+                    setor: 'Banheiro dos Professores',
+                    responsavel: 'Equipe Apoio Geral',
+                    horarios: ['09:00', '12:00', '15:30'],
+                    cor: Colors.purple,
+                  ),
+                  _buildCardSetorLimpeza(
+                    setor: 'Pátio e Refeitório',
+                    responsavel: 'Equipe Geral',
+                    horarios: ['10:30', '13:00 (Pós-almoço)'],
+                    cor: Colors.orange,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardSetorLimpeza({
+    required String setor,
+    required String responsavel,
+    required List<String> horarios,
+    required Color cor,
+  }) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.sanitizer, color: cor),
+                const SizedBox(width: 8),
+                Text(setor, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('Responsáveis: $responsavel', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              children: horarios.map((h) {
+                return Chip(
+                  label: Text(h, style: TextStyle(fontSize: 11, color: cor, fontWeight: FontWeight.bold)),
+                  backgroundColor: cor.withValues(alpha: 0.1),
+                  padding: EdgeInsets.zero,
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Modal 2: Envio de Boletos aos Pais
   void _abrirModalGerarBoleto(BuildContext context) {
     String? alunoIdSelecionado;
     String? alunoNomeSelecionado;
@@ -195,9 +311,19 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
                   );
                 },
               ),
-              TextField(controller: tituloController, decoration: const InputDecoration(labelText: 'Descrição / Título')),
-              TextField(controller: valorController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Valor (R\$)')),
-              TextField(controller: vencimentoController, decoration: const InputDecoration(labelText: 'Data de Vencimento')),
+              TextField(
+                controller: tituloController,
+                decoration: const InputDecoration(labelText: 'Descrição / Título (ex: Mensalidade - Novembro)'),
+              ),
+              TextField(
+                controller: valorController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Valor (R\$)'),
+              ),
+              TextField(
+                controller: vencimentoController,
+                decoration: const InputDecoration(labelText: 'Data de Vencimento (ex: 10/11/2026)'),
+              ),
             ],
           ),
         ),
@@ -207,16 +333,19 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
             onPressed: () async {
               if (alunoIdSelecionado != null && valorController.text.isNotEmpty) {
+                final nav = Navigator.of(ctx);
+                final messenger = ScaffoldMessenger.of(context);
+
                 await _firestoreService.gerarBoleto(
                   alunoId: alunoIdSelecionado!,
                   alunoNome: alunoNomeSelecionado ?? 'Aluno',
                   titulo: tituloController.text,
                   valor: double.tryParse(valorController.text) ?? 0.0,
                   vencimento: vencimentoController.text,
-                  ano: 2026,
+                  ano: DateTime.now().year,
                 );
-                if (mounted) Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
+                nav.pop();
+                messenger.showSnackBar(
                   const SnackBar(content: Text('Boleto enviado com sucesso para o painel dos pais!')),
                 );
               }
@@ -228,7 +357,7 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
     );
   }
 
-  // Balanço Financeiro em Tempo Real
+  // Modal 3: Resumo Financeiro em Tempo Real
   void _abrirModalResumoFinanceiro(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -295,6 +424,7 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
     );
   }
 
+  // Modal 4: Aprovação de Justificativas e Atestados
   void _abrirModalJustificativas(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -354,8 +484,9 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
                                         OutlinedButton(
                                           style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
                                           onPressed: () async {
+                                            final nav = Navigator.of(ctx);
                                             await _firestoreService.atualizarStatusJustificativa(docs[index].id, 'rejeitado');
-                                            if (mounted) Navigator.pop(ctx);
+                                            nav.pop();
                                           },
                                           child: const Text('Rejeitar'),
                                         ),
@@ -363,8 +494,9 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
                                         ElevatedButton(
                                           style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                                           onPressed: () async {
+                                            final nav = Navigator.of(ctx);
                                             await _firestoreService.atualizarStatusJustificativa(docs[index].id, 'aprovado');
-                                            if (mounted) Navigator.pop(ctx);
+                                            nav.pop();
                                           },
                                           child: const Text('Aprovar'),
                                         ),

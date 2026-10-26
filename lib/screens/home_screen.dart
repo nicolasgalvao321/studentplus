@@ -8,6 +8,7 @@ import 'tarefas_screen.dart';
 import 'resumo_screen.dart';
 import 'gestao_recados_screen.dart';
 import 'calendario_screen.dart';
+import 'cantina_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -144,6 +145,21 @@ class HomeScreen extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (context) =>
                                 const TarefasScreen(isProfessor: false),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildMenuCard(
+                          context: context,
+                          title: 'CANTINA',
+                          icon: Icons.fastfood,
+                          color: Colors.orange.shade800,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                const CantinaScreen(isStaff: false), // SOMENTE LEITURA
                               ),
                             );
                           },

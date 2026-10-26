@@ -16,11 +16,17 @@ class FirestoreService {
   }
 
   Stream<QuerySnapshot> getAlunos() {
-    return _db.collection('users').where('role', isEqualTo: 'aluno').snapshots();
+    return _db
+        .collection('users')
+        .where('role', isEqualTo: 'aluno')
+        .snapshots();
   }
 
   Future<DocumentSnapshot> getAlunoVinculado(String responsavelUid) async {
-    DocumentSnapshot respDoc = await _db.collection('users').doc(responsavelUid).get();
+    DocumentSnapshot respDoc = await _db
+        .collection('users')
+        .doc(responsavelUid)
+        .get();
     String alunoId = respDoc.get('alunoId') ?? '';
     return await _db.collection('users').doc(alunoId).get();
   }
@@ -30,10 +36,15 @@ class FirestoreService {
   // ==========================================
 
   Stream<QuerySnapshot> getDisciplinas(String alunoUid) {
-    return _db.collection('users').doc(alunoUid).collection('disciplinas').snapshots();
+    return _db
+        .collection('users')
+        .doc(alunoUid)
+        .collection('disciplinas')
+        .snapshots();
   }
 
-  Future<void> addDisciplina(String alunoUid, String nome, String professor) async {
+  Future<void> addDisciplina(String alunoUid, String nome,
+      String professor) async {
     await _db.collection('users').doc(alunoUid).collection('disciplinas').add({
       'nome': nome,
       'professor': professor,
@@ -42,7 +53,8 @@ class FirestoreService {
     });
   }
 
-  Future<void> atualizarFaltas(String alunoUid, String disciplinaId, int novasFaltas) async {
+  Future<void> atualizarFaltas(String alunoUid, String disciplinaId,
+      int novasFaltas) async {
     await _db
         .collection('users')
         .doc(alunoUid)
@@ -64,7 +76,8 @@ class FirestoreService {
         .snapshots();
   }
 
-  Future<void> addTarefa(String alunoUid, String titulo, String disciplina, String dataEntrega) async {
+  Future<void> addTarefa(String alunoUid, String titulo, String disciplina,
+      String dataEntrega) async {
     await _db.collection('users').doc(alunoUid).collection('tarefas').add({
       'titulo': titulo,
       'disciplina': disciplina,
@@ -73,7 +86,8 @@ class FirestoreService {
     });
   }
 
-  Future<void> toggleTarefaStatus(String alunoUid, String tarefaId, bool statusAtual) async {
+  Future<void> toggleTarefaStatus(String alunoUid, String tarefaId,
+      bool statusAtual) async {
     await _db
         .collection('users')
         .doc(alunoUid)
@@ -87,7 +101,10 @@ class FirestoreService {
   // ==========================================
 
   Stream<QuerySnapshot> getRecados() {
-    return _db.collection('recados').orderBy('data', descending: true).snapshots();
+    return _db
+        .collection('recados')
+        .orderBy('data', descending: true)
+        .snapshots();
   }
 
   Stream<QuerySnapshot> getRecadosParaResponsavel() {
@@ -115,7 +132,8 @@ class FirestoreService {
     });
   }
 
-  Future<void> confirmarLeituraRecado(String recadoId, String responsavelUid) async {
+  Future<void> confirmarLeituraRecado(String recadoId,
+      String responsavelUid) async {
     await _db.collection('recados').doc(recadoId).update({
       'confirmacoes': FieldValue.arrayUnion([responsavelUid])
     });
@@ -155,16 +173,72 @@ class FirestoreService {
     if (snapshot.docs.isEmpty) {
       List<Map<String, dynamic>> mensalidadesDemo = [
         // --- 2026 ---
-        {'alunoId': alunoId, 'titulo': 'Mensalidade - Outubro', 'valor': 450.0, 'vencimento': '10/10/2026', 'ano': 2026, 'status': 'pago'},
-        {'alunoId': alunoId, 'titulo': 'Mensalidade - Novembro', 'valor': 450.0, 'vencimento': '10/11/2026', 'ano': 2026, 'status': 'pendente'},
-        {'alunoId': alunoId, 'titulo': 'Mensalidade - Dezembro', 'valor': 450.0, 'vencimento': '10/12/2026', 'ano': 2026, 'status': 'a vencer'},
+        {
+          'alunoId': alunoId,
+          'titulo': 'Mensalidade - Outubro',
+          'valor': 450.0,
+          'vencimento': '10/10/2026',
+          'ano': 2026,
+          'status': 'pago'
+        },
+        {
+          'alunoId': alunoId,
+          'titulo': 'Mensalidade - Novembro',
+          'valor': 450.0,
+          'vencimento': '10/11/2026',
+          'ano': 2026,
+          'status': 'pendente'
+        },
+        {
+          'alunoId': alunoId,
+          'titulo': 'Mensalidade - Dezembro',
+          'valor': 450.0,
+          'vencimento': '10/12/2026',
+          'ano': 2026,
+          'status': 'a vencer'
+        },
         // --- 2027 ---
-        {'alunoId': alunoId, 'titulo': 'Mensalidade - Janeiro', 'valor': 480.0, 'vencimento': '10/01/2027', 'ano': 2027, 'status': 'a vencer'},
-        {'alunoId': alunoId, 'titulo': 'Mensalidade - Fevereiro', 'valor': 480.0, 'vencimento': '10/02/2027', 'ano': 2027, 'status': 'a vencer'},
-        {'alunoId': alunoId, 'titulo': 'Mensalidade - Março', 'valor': 480.0, 'vencimento': '10/03/2027', 'ano': 2027, 'status': 'a vencer'},
+        {
+          'alunoId': alunoId,
+          'titulo': 'Mensalidade - Janeiro',
+          'valor': 480.0,
+          'vencimento': '10/01/2027',
+          'ano': 2027,
+          'status': 'a vencer'
+        },
+        {
+          'alunoId': alunoId,
+          'titulo': 'Mensalidade - Fevereiro',
+          'valor': 480.0,
+          'vencimento': '10/02/2027',
+          'ano': 2027,
+          'status': 'a vencer'
+        },
+        {
+          'alunoId': alunoId,
+          'titulo': 'Mensalidade - Março',
+          'valor': 480.0,
+          'vencimento': '10/03/2027',
+          'ano': 2027,
+          'status': 'a vencer'
+        },
         // --- 2028 ---
-        {'alunoId': alunoId, 'titulo': 'Mensalidade - Janeiro', 'valor': 500.0, 'vencimento': '10/01/2028', 'ano': 2028, 'status': 'a vencer'},
-        {'alunoId': alunoId, 'titulo': 'Mensalidade - Fevereiro', 'valor': 500.0, 'vencimento': '10/02/2028', 'ano': 2028, 'status': 'a vencer'},
+        {
+          'alunoId': alunoId,
+          'titulo': 'Mensalidade - Janeiro',
+          'valor': 500.0,
+          'vencimento': '10/01/2028',
+          'ano': 2028,
+          'status': 'a vencer'
+        },
+        {
+          'alunoId': alunoId,
+          'titulo': 'Mensalidade - Fevereiro',
+          'valor': 500.0,
+          'vencimento': '10/02/2028',
+          'ano': 2028,
+          'status': 'a vencer'
+        },
       ];
 
       for (var item in mensalidadesDemo) {
@@ -226,10 +300,37 @@ class FirestoreService {
         .snapshots();
   }
 
-  Future<void> atualizarStatusJustificativa(String docId, String novoStatus) async {
+  Future<void> atualizarStatusJustificativa(String docId,
+      String novoStatus) async {
     await _db.collection('justificativas').doc(docId).update({
       'status': novoStatus,
       'analisadoEm': FieldValue.serverTimestamp(),
     });
+  }
+
+// ==========================================
+// 7. CANTINA E ESCALA DE LIMPEZA
+// ==========================================
+
+// Buscar itens do cardápio da cantina
+  Stream<QuerySnapshot> getCardapioCantina() {
+    return _db
+        .collection('cantina')
+        .orderBy('criadoEm', descending: true)
+        .snapshots();
+  }
+
+// Adicionar novo lanche (Somente Staff / Funcionários)
+  Future<void> addLancheCantina(String nome, double preco) async {
+    await _db.collection('cantina').add({
+      'nome': nome,
+      'preco': preco,
+      'criadoEm': FieldValue.serverTimestamp(),
+    });
+  }
+
+// Deletar lanche da cantina
+  Future<void> deletarLancheCantina(String docId) async {
+    await _db.collection('cantina').doc(docId).delete();
   }
 }
