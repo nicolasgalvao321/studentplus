@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firestore_service.dart';
 
 class ResumoScreen extends StatefulWidget {
@@ -14,6 +15,8 @@ class _ResumoScreenState extends State<ResumoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Resumo Acadêmico'),
@@ -27,10 +30,10 @@ class _ResumoScreenState extends State<ResumoScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: StreamBuilder<QuerySnapshot>(
-          stream: _firestoreService.getTarefas(),
+          stream: _firestoreService.getTarefas(uid),
           builder: (context, tarefasSnap) {
             return StreamBuilder<QuerySnapshot>(
-              stream: _firestoreService.getDisciplinas(),
+              stream: _firestoreService.getDisciplinas(uid),
               builder: (context, disciplinasSnap) {
                 if (tarefasSnap.connectionState == ConnectionState.waiting ||
                     disciplinasSnap.connectionState ==

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 
 class CalendarioScreen extends StatefulWidget {
@@ -13,7 +12,6 @@ class CalendarioScreen extends StatefulWidget {
 }
 
 class _CalendarioScreenState extends State<CalendarioScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
   final AuthService _authService = AuthService();
 
   DateTime _selectedDate = DateTime.now();
@@ -141,13 +139,14 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                       final String nomeProf =
                           userDoc.data()?['nome'] ?? 'Professor';
 
-                      await _firestoreService.adicionarEvento(
-                        titulo: titulo,
-                        descricao: desc,
-                        tipo: _tipoSelecionado,
-                        data: _selectedDate,
-                        autorNome: nomeProf,
-                      );
+                      await FirebaseFirestore.instance.collection('eventos').add({
+                        'titulo': titulo,
+                        'descricao': desc,
+                        'tipo': _tipoSelecionado,
+                        'data': Timestamp.fromDate(_selectedDate),
+                        'autorNome': nomeProf,
+                        'criadoEm': FieldValue.serverTimestamp(),
+                      });
 
                       if (mounted) {
                         nav.pop();
@@ -213,7 +212,10 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
           ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _firestoreService.getEventos(),
+              stream: FirebaseFirestore.instance
+                  .collection('eventos')
+                  .orderBy('data')
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(
@@ -287,7 +289,10 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                           icon: const Icon(Icons.delete,
                               color: Colors.red),
                           onPressed: () async {
-                            await _firestoreService.deletarEvento(doc.id);
+                            await FirebaseFirestore.instance
+                                .collection('eventos')
+                                .doc(doc.id)
+                                .delete();
                           },
                         )
                             : null,

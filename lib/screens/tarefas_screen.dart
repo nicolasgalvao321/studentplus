@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firestore_service.dart';
 
 class TarefasScreen extends StatefulWidget {
@@ -83,7 +84,7 @@ class _TarefasScreenState extends State<TarefasScreen> {
     );
   }
 
-  void _mostrarDialogNovaTarefa() {
+  void _mostrarDialogNovaTarefa(String targetUid) {
     _tituloController.clear();
     _descricaoController.clear();
     _disciplinaSelecionada = null;
@@ -124,7 +125,7 @@ class _TarefasScreenState extends State<TarefasScreen> {
                   ),
                   const SizedBox(height: 12),
                   StreamBuilder<QuerySnapshot>(
-                    stream: _firestoreService.getDisciplinas(widget.alunoUid),
+                    stream: _firestoreService.getDisciplinas(targetUid),
                     builder: (context, snapshot) {
                       final docs = snapshot.data?.docs ?? [];
                       final items = docs.map((doc) {
@@ -214,12 +215,11 @@ class _TarefasScreenState extends State<TarefasScreen> {
                       final messenger = ScaffoldMessenger.of(context);
                       final nav = Navigator.of(context);
 
-                      await _firestoreService.adicionarTarefa(
-                        uid: widget.alunoUid,
-                        titulo: titulo,
-                        descricao: _descricaoController.text.trim(),
-                        disciplina: _disciplinaSelecionada ?? 'Geral',
-                        dataEntrega: Timestamp.fromDate(_dataEntregaSelecionada),
+                      await _firestoreService.addTarefa(
+                        targetUid,
+                        titulo,
+                        _disciplinaSelecionada ?? 'Geral',
+                        _formatarData(_dataEntregaSelecionada),
                       );
 
                       if (mounted) {
@@ -242,6 +242,7 @@ class _TarefasScreenState extends State<TarefasScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final String targetUid = widget.alunoUid ?? FirebaseAuth.instance.currentUser?.uid ?? '';
     final String titulo = widget.alunoNome != null
         ? 'Tarefas - ${widget.alunoNome}'
         : 'Minhas Tarefas';
@@ -257,7 +258,7 @@ class _TarefasScreenState extends State<TarefasScreen> {
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _firestoreService.getTarefas(widget.alunoUid),
+        stream: _firestoreService.getTarefas(targetUid),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Erro ao carregar: ${snapshot.error}'));
@@ -307,10 +308,11 @@ class _TarefasScreenState extends State<TarefasScreen> {
                     value: concluida,
                     activeColor: Colors.orange,
                     onChanged: (bool? novoValor) async {
-                      if (novoValor != null) {
-                        await _firestoreService.alternarStatusTarefa(
-                            doc.id, novoValor, widget.alunoUid);
-                      }
+                      await _firestoreService.toggleTarefaStatus(
+                        targetUid,
+                        doc.id,
+                        concluida,
+                      );
                     },
                   ),
                   title: Text(
@@ -368,8 +370,12 @@ class _TarefasScreenState extends State<TarefasScreen> {
                       ? IconButton(
                     icon: const Icon(Icons.delete_outline, color: Colors.red),
                     onPressed: () async {
-                      await _firestoreService.deletarTarefa(
-                          doc.id, widget.alunoUid);
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(targetUid)
+                          .collection('tarefas')
+                          .doc(doc.id)
+                          .delete();
                     },
                   )
                       : null,
@@ -381,7 +387,7 @@ class _TarefasScreenState extends State<TarefasScreen> {
       ),
       floatingActionButton: widget.isProfessor
           ? FloatingActionButton(
-        onPressed: _mostrarDialogNovaTarefa,
+        onPressed: () => _mostrarDialogNovaTarefa(targetUid),
         backgroundColor: Colors.orange,
         child: const Icon(Icons.add, color: Colors.white),
       )

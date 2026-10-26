@@ -1,10 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-
-  String get _currentUid => FirebaseAuth.instance.currentUser?.uid ?? '';
 
   // ==========================================
   // 1. USUÁRIOS E PERFIS
@@ -32,41 +29,15 @@ class FirestoreService {
   // 2. DISCIPLINAS E FALTAS
   // ==========================================
 
-  Stream<QuerySnapshot> getDisciplinas([String? alunoUid]) {
-    final uid = (alunoUid != null && alunoUid.isNotEmpty) ? alunoUid : _currentUid;
-    if (uid.isEmpty) return const Stream.empty();
-    return _db.collection('users').doc(uid).collection('disciplinas').snapshots();
-  }
-
-  Stream<QuerySnapshot> getDisciplinasDoAluno(String alunoUid) {
-    return getDisciplinas(alunoUid);
+  Stream<QuerySnapshot> getDisciplinas(String alunoUid) {
+    return _db.collection('users').doc(alunoUid).collection('disciplinas').snapshots();
   }
 
   Future<void> addDisciplina(String alunoUid, String nome, String professor) async {
     await _db.collection('users').doc(alunoUid).collection('disciplinas').add({
       'nome': nome,
       'professor': professor,
-      'materia': 'Geral',
       'faltas': 0,
-      'maxFaltas': 10,
-      'criadoEm': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> adicionarDisciplina({
-    String? uid,
-    required String materia,
-    required String nome,
-    required String professor,
-    required int maxFaltas,
-  }) async {
-    final alunoUid = (uid != null && uid.isNotEmpty) ? uid : _currentUid;
-    await _db.collection('users').doc(alunoUid).collection('disciplinas').add({
-      'materia': materia,
-      'nome': nome,
-      'professor': professor,
-      'faltas': 0,
-      'maxFaltas': maxFaltas,
       'criadoEm': FieldValue.serverTimestamp(),
     });
   }
@@ -80,34 +51,14 @@ class FirestoreService {
         .update({'faltas': novasFaltas});
   }
 
-  Future<void> atualizarFaltasAluno({
-    required String alunoUid,
-    required String disciplinaId,
-    required int novasFaltas,
-  }) async {
-    await atualizarFaltas(alunoUid, disciplinaId, novasFaltas);
-  }
-
-  Future<void> deletarDisciplina(String disciplinaId, [String? alunoUid]) async {
-    final uid = (alunoUid != null && alunoUid.isNotEmpty) ? alunoUid : _currentUid;
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('disciplinas')
-        .doc(disciplinaId)
-        .delete();
-  }
-
   // ==========================================
   // 3. TAREFAS DOS ALUNOS
   // ==========================================
 
-  Stream<QuerySnapshot> getTarefas([String? alunoUid]) {
-    final uid = (alunoUid != null && alunoUid.isNotEmpty) ? alunoUid : _currentUid;
-    if (uid.isEmpty) return const Stream.empty();
+  Stream<QuerySnapshot> getTarefas(String alunoUid) {
     return _db
         .collection('users')
-        .doc(uid)
+        .doc(alunoUid)
         .collection('tarefas')
         .orderBy('dataEntrega')
         .snapshots();
@@ -122,24 +73,6 @@ class FirestoreService {
     });
   }
 
-  Future<void> adicionarTarefa({
-    String? uid,
-    required String titulo,
-    String? descricao,
-    required String disciplina,
-    required dynamic dataEntrega,
-  }) async {
-    final alunoUid = (uid != null && uid.isNotEmpty) ? uid : _currentUid;
-    await _db.collection('users').doc(alunoUid).collection('tarefas').add({
-      'titulo': titulo,
-      'descricao': descricao ?? '',
-      'disciplina': disciplina,
-      'dataEntrega': dataEntrega,
-      'concluida': false,
-      'criadoEm': FieldValue.serverTimestamp(),
-    });
-  }
-
   Future<void> toggleTarefaStatus(String alunoUid, String tarefaId, bool statusAtual) async {
     await _db
         .collection('users')
@@ -147,26 +80,6 @@ class FirestoreService {
         .collection('tarefas')
         .doc(tarefaId)
         .update({'concluida': !statusAtual});
-  }
-
-  Future<void> alternarStatusTarefa(String tarefaId, bool statusAtual, [String? alunoUid]) async {
-    final uid = (alunoUid != null && alunoUid.isNotEmpty) ? alunoUid : _currentUid;
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('tarefas')
-        .doc(tarefaId)
-        .update({'concluida': statusAtual});
-  }
-
-  Future<void> deletarTarefa(String tarefaId, [String? alunoUid]) async {
-    final uid = (alunoUid != null && alunoUid.isNotEmpty) ? alunoUid : _currentUid;
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('tarefas')
-        .doc(tarefaId)
-        .delete();
   }
 
   // ==========================================
@@ -195,33 +108,11 @@ class FirestoreService {
       'titulo': titulo,
       'conteudo': conteudo,
       'autor': autor,
-      'autorNome': autor,
-      'link': linkAnexo ?? '',
       'linkAnexo': linkAnexo ?? '',
       'destino': destino,
       'confirmacoes': [],
       'data': FieldValue.serverTimestamp(),
     });
-  }
-
-  Future<void> enviarRecado({
-    required String titulo,
-    required String conteudo,
-    required String autorNome,
-    String? link,
-    String destino = 'todos',
-  }) async {
-    await addRecado(
-      titulo: titulo,
-      conteudo: conteudo,
-      autor: autorNome,
-      linkAnexo: link,
-      destino: destino,
-    );
-  }
-
-  Future<void> deletarRecado(String recadoId) async {
-    await _db.collection('recados').doc(recadoId).delete();
   }
 
   Future<void> confirmarLeituraRecado(String recadoId, String responsavelUid) async {
@@ -231,7 +122,7 @@ class FirestoreService {
   }
 
   // ==========================================
-  // 5. JUSTIFICATIVAS E FINANCEIRO (PAIS)
+  // 5. JUSTIFICATIVAS E FINANCEIRO DINÂMICO
   // ==========================================
 
   Future<void> enviarJustificativa({
@@ -254,13 +145,74 @@ class FirestoreService {
     });
   }
 
-  Stream<QuerySnapshot> getMensalidadesAluno(String alunoId) {
-    return _db
-        .collection('users')
-        .doc(alunoId)
+  // Inicializa mensalidades de demonstração para 2026, 2027 e 2028 caso não existam no banco
+  Future<void> inicializarMensalidadesExemplo(String alunoId) async {
+    var snapshot = await _db
         .collection('mensalidades')
-        .orderBy('vencimento')
+        .where('alunoId', isEqualTo: alunoId)
+        .get();
+
+    if (snapshot.docs.isEmpty) {
+      List<Map<String, dynamic>> mensalidadesDemo = [
+        // --- 2026 ---
+        {'alunoId': alunoId, 'titulo': 'Mensalidade - Outubro', 'valor': 450.0, 'vencimento': '10/10/2026', 'ano': 2026, 'status': 'pago'},
+        {'alunoId': alunoId, 'titulo': 'Mensalidade - Novembro', 'valor': 450.0, 'vencimento': '10/11/2026', 'ano': 2026, 'status': 'pendente'},
+        {'alunoId': alunoId, 'titulo': 'Mensalidade - Dezembro', 'valor': 450.0, 'vencimento': '10/12/2026', 'ano': 2026, 'status': 'a vencer'},
+        // --- 2027 ---
+        {'alunoId': alunoId, 'titulo': 'Mensalidade - Janeiro', 'valor': 480.0, 'vencimento': '10/01/2027', 'ano': 2027, 'status': 'a vencer'},
+        {'alunoId': alunoId, 'titulo': 'Mensalidade - Fevereiro', 'valor': 480.0, 'vencimento': '10/02/2027', 'ano': 2027, 'status': 'a vencer'},
+        {'alunoId': alunoId, 'titulo': 'Mensalidade - Março', 'valor': 480.0, 'vencimento': '10/03/2027', 'ano': 2027, 'status': 'a vencer'},
+        // --- 2028 ---
+        {'alunoId': alunoId, 'titulo': 'Mensalidade - Janeiro', 'valor': 500.0, 'vencimento': '10/01/2028', 'ano': 2028, 'status': 'a vencer'},
+        {'alunoId': alunoId, 'titulo': 'Mensalidade - Fevereiro', 'valor': 500.0, 'vencimento': '10/02/2028', 'ano': 2028, 'status': 'a vencer'},
+      ];
+
+      for (var item in mensalidadesDemo) {
+        await _db.collection('mensalidades').add(item);
+      }
+    }
+  }
+
+  // Buscar mensalidades do aluno
+  Stream<QuerySnapshot> getMensalidadesDoAluno(String alunoId) {
+    return _db
+        .collection('mensalidades')
+        .where('alunoId', isEqualTo: alunoId)
         .snapshots();
+  }
+
+  // Simular Pagamento: Muda o status no Firestore para 'pago'
+  Future<void> simularPagamentoMensalidade(String mensalidadeId) async {
+    await _db.collection('mensalidades').doc(mensalidadeId).update({
+      'status': 'pago',
+      'pagoEm': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // Stream de todas as mensalidades para a Secretaria/Staff
+  Stream<QuerySnapshot> getTodasMensalidades() {
+    return _db.collection('mensalidades').snapshots();
+  }
+
+  // Criar/Enviar novo boleto pela Secretaria
+  Future<void> gerarBoleto({
+    required String alunoId,
+    required String alunoNome,
+    required String titulo,
+    required double valor,
+    required String vencimento,
+    required int ano,
+  }) async {
+    await _db.collection('mensalidades').add({
+      'alunoId': alunoId,
+      'alunoNome': alunoNome,
+      'titulo': titulo,
+      'valor': valor,
+      'vencimento': vencimento,
+      'ano': ano,
+      'status': 'pendente',
+      'criadoEm': FieldValue.serverTimestamp(),
+    });
   }
 
   // ==========================================
@@ -279,34 +231,5 @@ class FirestoreService {
       'status': novoStatus,
       'analisadoEm': FieldValue.serverTimestamp(),
     });
-  }
-
-  // ==========================================
-  // 7. EVENTOS E CALENDÁRIO
-  // ==========================================
-
-  Stream<QuerySnapshot> getEventos() {
-    return _db.collection('eventos').orderBy('data').snapshots();
-  }
-
-  Future<void> adicionarEvento({
-    required String titulo,
-    required String descricao,
-    required String tipo,
-    required DateTime data,
-    required String autorNome,
-  }) async {
-    await _db.collection('eventos').add({
-      'titulo': titulo,
-      'descricao': descricao,
-      'tipo': tipo,
-      'data': Timestamp.fromDate(data),
-      'autorNome': autorNome,
-      'criadoEm': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> deletarEvento(String eventoId) async {
-    await _db.collection('eventos').doc(eventoId).delete();
   }
 }

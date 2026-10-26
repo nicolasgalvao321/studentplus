@@ -26,10 +26,10 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
-              final nav = Navigator.of(context);
               await FirebaseAuth.instance.signOut();
               if (mounted) {
-                nav.pushReplacement(
+                Navigator.pushReplacement(
+                  context,
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                 );
               }
@@ -80,7 +80,7 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 1.2,
+              childAspectRatio: 1.1,
               children: [
                 _buildCardMenu(
                   context,
@@ -107,16 +107,16 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
                 ),
                 _buildCardMenu(
                   context,
-                  titulo: 'Consulta de IDs',
-                  subtitulo: 'IDs dos alunos p/ pais',
-                  icone: Icons.badge,
-                  cor: Colors.blue,
-                  onTap: () => _abrirModalAlunosIDs(context),
+                  titulo: 'Enviar Boleto',
+                  subtitulo: 'Gerar cobrança p/ aluno',
+                  icone: Icons.request_quote,
+                  cor: Colors.indigo,
+                  onTap: () => _abrirModalGerarBoleto(context),
                 ),
                 _buildCardMenu(
                   context,
                   titulo: 'Balanço Financeiro',
-                  subtitulo: 'Resumo das mensalidades',
+                  subtitulo: 'Receita em tempo real',
                   icone: Icons.monetization_on,
                   cor: Colors.green.shade700,
                   onTap: () => _abrirModalResumoFinanceiro(context),
@@ -156,6 +156,141 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _abrirModalGerarBoleto(BuildContext context) {
+    String? alunoIdSelecionado;
+    String? alunoNomeSelecionado;
+    final tituloController = TextEditingController(text: 'Mensalidade Escola');
+    final valorController = TextEditingController(text: '450.00');
+    final vencimentoController = TextEditingController(text: '10/11/2026');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Enviar Boleto / Cobrança'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              StreamBuilder<QuerySnapshot>(
+                stream: _firestoreService.getAlunos(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const CircularProgressIndicator();
+                  var alunosDocs = snapshot.data!.docs;
+
+                  return DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(labelText: 'Selecione o Aluno'),
+                    items: alunosDocs.map((doc) {
+                      var data = doc.data() as Map<String, dynamic>;
+                      return DropdownMenuItem<String>(
+                        value: doc.id,
+                        child: Text(data['nome'] ?? 'Aluno sem nome'),
+                        onTap: () => alunoNomeSelecionado = data['nome'],
+                      );
+                    }).toList(),
+                    onChanged: (val) => alunoIdSelecionado = val,
+                  );
+                },
+              ),
+              TextField(controller: tituloController, decoration: const InputDecoration(labelText: 'Descrição / Título')),
+              TextField(controller: valorController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Valor (R\$)')),
+              TextField(controller: vencimentoController, decoration: const InputDecoration(labelText: 'Data de Vencimento')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+            onPressed: () async {
+              if (alunoIdSelecionado != null && valorController.text.isNotEmpty) {
+                await _firestoreService.gerarBoleto(
+                  alunoId: alunoIdSelecionado!,
+                  alunoNome: alunoNomeSelecionado ?? 'Aluno',
+                  titulo: tituloController.text,
+                  valor: double.tryParse(valorController.text) ?? 0.0,
+                  vencimento: vencimentoController.text,
+                  ano: 2026,
+                );
+                if (mounted) Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Boleto enviado com sucesso para o painel dos pais!')),
+                );
+              }
+            },
+            child: const Text('Enviar Boleto'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Balanço Financeiro em Tempo Real
+  void _abrirModalResumoFinanceiro(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20.0),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: _firestoreService.getTodasMensalidades(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+            var docs = snapshot.data!.docs;
+            double totalPago = 0.0;
+            double totalPendente = 0.0;
+
+            for (var doc in docs) {
+              var data = doc.data() as Map<String, dynamic>;
+              double val = (data['valor'] ?? 0.0).toDouble();
+              String status = (data['status'] ?? 'pendente').toString().toLowerCase();
+
+              if (status == 'pago') {
+                totalPago += val;
+              } else {
+                totalPendente += val;
+              }
+            }
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Balanço Financeiro Escolar (Tempo Real)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                _buildLinhaFinanceira('Total Recebido (Pago)', 'R\$ ${totalPago.toStringAsFixed(2)}', Colors.green),
+                _buildLinhaFinanceira('Pendente / A Vencer', 'R\$ ${totalPendente.toStringAsFixed(2)}', Colors.orange),
+                _buildLinhaFinanceira('Cobranças Emitidas', '${docs.length} mensalidades', Colors.blue),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.purple.shade800, foregroundColor: Colors.white),
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Fechar Relatório'),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLinhaFinanceira(String rotulo, String valor, Color cor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(rotulo, style: const TextStyle(fontSize: 14)),
+          Text(valor, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: cor)),
+        ],
       ),
     );
   }
@@ -219,9 +354,8 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
                                         OutlinedButton(
                                           style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
                                           onPressed: () async {
-                                            final nav = Navigator.of(ctx);
                                             await _firestoreService.atualizarStatusJustificativa(docs[index].id, 'rejeitado');
-                                            nav.pop();
+                                            if (mounted) Navigator.pop(ctx);
                                           },
                                           child: const Text('Rejeitar'),
                                         ),
@@ -229,9 +363,8 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
                                         ElevatedButton(
                                           style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                                           onPressed: () async {
-                                            final nav = Navigator.of(ctx);
                                             await _firestoreService.atualizarStatusJustificativa(docs[index].id, 'aprovado');
-                                            nav.pop();
+                                            if (mounted) Navigator.pop(ctx);
                                           },
                                           child: const Text('Aprovar'),
                                         ),
@@ -250,91 +383,6 @@ class _FuncionarioHomeScreenState extends State<FuncionarioHomeScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _abrirModalAlunosIDs(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Consulta de IDs de Alunos Cadastrados', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const Text('Forneça este ID aos pais caso precisem realizar o vínculo no cadastro.', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            const Divider(),
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _firestoreService.getAlunos(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                  var docs = snapshot.data!.docs;
-                  if (docs.isEmpty) return const Center(child: Text('Nenhum aluno cadastrado no momento.'));
-
-                  return ListView.builder(
-                    itemCount: docs.length,
-                    itemBuilder: (context, index) {
-                      var data = docs[index].data() as Map<String, dynamic>;
-                      return ListTile(
-                        leading: const CircleAvatar(child: Icon(Icons.person)),
-                        title: Text(data['nome'] ?? 'Sem nome', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: SelectableText('ID: ${docs[index].id}'),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _abrirModalResumoFinanceiro(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Balanço Geral de Mensalidades', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            _buildLinhaFinanceira('Total Recebido (Mês Atual)', 'R\$ 42.750,00', Colors.green),
-            _buildLinhaFinanceira('Pendente / Em Aberto', 'R\$ 4.050,00', Colors.orange),
-            _buildLinhaFinanceira('Inadimplência Global', '8.6%', Colors.red),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.purple.shade800, foregroundColor: Colors.white),
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Fechar Relatório'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLinhaFinanceira(String rotulo, String valor, Color cor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(rotulo, style: const TextStyle(fontSize: 14)),
-          Text(valor, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: cor)),
-        ],
       ),
     );
   }

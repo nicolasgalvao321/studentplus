@@ -126,11 +126,11 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
                   final messenger = ScaffoldMessenger.of(context);
                   final nav = Navigator.of(context);
 
-                  await _firestoreService.enviarRecado(
+                  await _firestoreService.addRecado(
                     titulo: titulo,
                     conteudo: conteudo,
-                    autorNome: 'Professor',
-                    link: link,
+                    autor: 'Professor',
+                    linkAnexo: link,
                   );
 
                   if (mounted) {
@@ -188,8 +188,8 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
 
               final String titulo = data['titulo'] ?? '';
               final String conteudo = data['conteudo'] ?? '';
-              final String autorNome = data['autorNome'] ?? data['autor'] ?? 'Professor';
-              final String link = data['link'] ?? data['linkAnexo'] ?? '';
+              final String autorNome = data['autor'] ?? data['autorNome'] ?? 'Professor';
+              final String link = data['linkAnexo'] ?? data['link'] ?? '';
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -218,7 +218,10 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
                               icon: const Icon(Icons.delete_outline,
                                   color: Colors.red),
                               onPressed: () async {
-                                await _firestoreService.deletarRecado(doc.id);
+                                await FirebaseFirestore.instance
+                                    .collection('recados')
+                                    .doc(doc.id)
+                                    .delete();
                               },
                             ),
                         ],

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firestore_service.dart';
 
-class DisciplinasScreen extends StatefulWidget {
+class DisciplinasScreen extends StatelessWidget {
   final bool isProfessor;
-  final String? alunoUid;
+  final String? alunoUid; // ID passado quando aberta pelo responsável ou professor
   final String? alunoNome;
 
   const DisciplinasScreen({
@@ -15,201 +16,60 @@ class DisciplinasScreen extends StatefulWidget {
   });
 
   @override
-  State<DisciplinasScreen> createState() => _DisciplinasScreenState();
-}
-
-class _DisciplinasScreenState extends State<DisciplinasScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
-
-  final TextEditingController _materiaController = TextEditingController();
-  final TextEditingController _nomeController = TextEditingController();
-  final TextEditingController _professorController = TextEditingController();
-  final TextEditingController _maxFaltasController = TextEditingController();
-
-  void _mostrarDialogNovaDisciplina() {
-    _materiaController.clear();
-    _nomeController.clear();
-    _professorController.clear();
-    _maxFaltasController.clear();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Nova Disciplina (${widget.alunoNome ?? 'Aluno'})',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _materiaController,
-                decoration: const InputDecoration(
-                  labelText: 'Matéria / Área (ex: Exatas, Programação)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _nomeController,
-                decoration: const InputDecoration(
-                  labelText: 'Nome da Disciplina (ex: Cálculo I, Java)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _professorController,
-                decoration: const InputDecoration(
-                  labelText: 'Nome do Professor',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _maxFaltasController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Limite Máximo de Faltas',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                icon: const Icon(Icons.add_task),
-                label: const Text('Cadastrar Disciplina'),
-                onPressed: () async {
-                  final materia = _materiaController.text.trim();
-                  final nome = _nomeController.text.trim();
-                  final prof = _professorController.text.trim();
-                  final maxFaltas =
-                      int.tryParse(_maxFaltasController.text.trim()) ?? 10;
-
-                  if (nome.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Insira o nome da disciplina.')),
-                    );
-                    return;
-                  }
-
-                  final messenger = ScaffoldMessenger.of(context);
-                  final nav = Navigator.of(context);
-
-                  await _firestoreService.adicionarDisciplina(
-                    uid: widget.alunoUid,
-                    materia: materia.isEmpty ? 'Geral' : materia,
-                    nome: nome,
-                    professor: prof,
-                    maxFaltas: maxFaltas,
-                  );
-
-                  if (mounted) {
-                    nav.pop();
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Disciplina cadastrada!')),
-                    );
-                  }
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final String titulo = widget.alunoNome != null
-        ? 'Disciplinas - ${widget.alunoNome}'
-        : 'Minhas Disciplinas';
+    final FirestoreService firestoreService = FirestoreService();
+    // Usa o alunoUid do filho (se for responsável) ou o UID logado (se for o próprio aluno)
+    final String targetUid = alunoUid ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    final String titulo = alunoNome != null ? 'Disciplinas - $alunoNome' : 'Minhas Disciplinas';
 
     return Scaffold(
       appBar: AppBar(
         title: Text(titulo),
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.blueAccent,
         foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _firestoreService.getDisciplinas(widget.alunoUid),
+        stream: firestoreService.getDisciplinas(targetUid),
         builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Erro ao carregar: ${snapshot.error}'));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = snapshot.data?.docs ?? [];
-
+          var docs = snapshot.data!.docs;
           if (docs.isEmpty) {
-            return const Center(
-              child: Text('Nenhuma disciplina registada para este aluno.'),
-            );
+            return const Center(child: Text('Nenhuma disciplina encontrada.'));
           }
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: docs.length,
             itemBuilder: (context, index) {
-              final doc = docs[index];
-              final data = doc.data() as Map<String, dynamic>;
+              var data = docs[index].data() as Map<String, dynamic>;
+              int faltas = data['faltas'] ?? 0;
+              int maxFaltas = data['maxFaltas'] ?? 20;
+              String nome = data['nome'] ?? 'Disciplina';
+              String professor = data['professor'] ?? 'Professor não informado';
+              String categoria = data['categoria'] ?? data['materia'] ?? 'GERAL';
 
-              final String materia = data['materia'] ?? 'Geral';
-              final String nome = data['nome'] ?? 'Sem Nome';
-              final String prof = data['professor'] ?? 'Não informado';
-              final int faltas = data['faltas'] ?? 0;
-              final int maxFaltas = data['maxFaltas'] ?? 10;
+              double progresso = (faltas / maxFaltas).clamp(0.0, 1.0);
 
-              final double percentualFaltas =
-              (maxFaltas > 0) ? (faltas / maxFaltas) : 0.0;
-              final bool estourou = faltas >= maxFaltas;
-              final bool pertoDoLimite =
-                  !estourou && (maxFaltas > 0) && (percentualFaltas >= 0.75);
+              // Definição visual dos alertas e da barra de progresso
+              bool pertoDoLimite = faltas >= (maxFaltas * 0.75) && faltas < maxFaltas;
+              bool reprovado = faltas >= maxFaltas;
 
-              Color statusColor = Colors.green;
-              String statusText = 'Frequência Regular';
-              IconData statusIcon = Icons.check_circle_outline;
-
-              if (estourou) {
-                statusColor = Colors.red;
-                statusText = 'LIMITE EXCEDIDO!';
-                statusIcon = Icons.cancel;
+              Color corBarra = Colors.green;
+              if (reprovado) {
+                corBarra = Colors.red;
               } else if (pertoDoLimite) {
-                statusColor = Colors.orange.shade800;
-                statusText = 'ALERTA: Perto do limite!';
-                statusIcon = Icons.warning_amber_rounded;
+                corBarra = Colors.orange;
               }
 
               return Card(
-                margin: const EdgeInsets.only(bottom: 16),
+                margin: const EdgeInsets.symmetric(vertical: 8),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
-                    color: statusColor.withOpacity(0.5),
-                    width: estourou || pertoDoLimite ? 1.5 : 0.5,
+                    color: reprovado ? Colors.red.shade200 : Colors.grey.shade200,
                   ),
                 ),
                 child: Padding(
@@ -217,37 +77,25 @@ class _DisciplinasScreenState extends State<DisciplinasScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              materia.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade800,
-                              ),
-                            ),
+                      // Categoria (Ex: ENGENHARIA DE SOFTWARE, EXATAS)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          categoria.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade800,
                           ),
-                          if (widget.isProfessor)
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline,
-                                  color: Colors.red),
-                              onPressed: () async {
-                                await _firestoreService.deletarDisciplina(
-                                    doc.id, widget.alunoUid);
-                              },
-                            ),
-                        ],
+                        ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
+
+                      // Nome da Disciplina e Professor
                       Text(
                         nome,
                         style: const TextStyle(
@@ -256,55 +104,39 @@ class _DisciplinasScreenState extends State<DisciplinasScreen> {
                         ),
                       ),
                       Text(
-                        'Prof: $prof',
+                        'Prof: $professor',
+                        style: const TextStyle(fontSize: 13, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Status (Alerta / Frequência Regular / Reprovado)
+                      if (reprovado)
+                        _buildStatusBadge('EXCEDEU O LIMITE DE FALTAS', Colors.red)
+                      else if (pertoDoLimite)
+                        _buildStatusBadge('⚠️ ALERTA: Perto do limite!', Colors.orange)
+                      else
+                        _buildStatusBadge('✓ Frequência Regular', Colors.green),
+
+                      const SizedBox(height: 12),
+
+                      // Contador de Faltas
+                      Text(
+                        'Faltas: $faltas / $maxFaltas',
                         style: TextStyle(
-                            color: Colors.grey.shade700, fontSize: 13),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(8),
+                          fontWeight: FontWeight.bold,
+                          color: corBarra,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(statusIcon, color: statusColor, size: 18),
-                            const SizedBox(width: 6),
-                            Text(
-                              statusText,
-                              style: TextStyle(
-                                color: statusColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Faltas: $faltas / $maxFaltas',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: statusColor,
-                            ),
-                          ),
-                        ],
                       ),
                       const SizedBox(height: 6),
+
+                      // Barra de Progresso Visual
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: LinearProgressIndicator(
-                          value: percentualFaltas.clamp(0.0, 1.0),
-                          backgroundColor: Colors.grey.shade200,
-                          color: statusColor,
+                          value: progresso,
                           minHeight: 8,
+                          backgroundColor: Colors.grey.shade200,
+                          valueColor: AlwaysStoppedAnimation<Color>(corBarra),
                         ),
                       ),
                     ],
@@ -315,13 +147,24 @@ class _DisciplinasScreenState extends State<DisciplinasScreen> {
           );
         },
       ),
-      floatingActionButton: widget.isProfessor
-          ? FloatingActionButton(
-        onPressed: _mostrarDialogNovaDisciplina,
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.add, color: Colors.white),
-      )
-          : null,
+    );
+  }
+
+  Widget _buildStatusBadge(String texto, Color cor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: cor.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        texto,
+        style: TextStyle(
+          color: cor,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      ),
     );
   }
 }

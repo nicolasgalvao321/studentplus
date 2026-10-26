@@ -4,8 +4,13 @@ import '../services/firestore_service.dart';
 
 class GestaoFaltasScreen extends StatefulWidget {
   final String? alunoUid;
+  final bool isProfessor;
 
-  const GestaoFaltasScreen({super.key, this.alunoUid});
+  const GestaoFaltasScreen({
+    super.key,
+    this.alunoUid,
+    this.isProfessor = true,
+  });
 
   @override
   State<GestaoFaltasScreen> createState() => _GestaoFaltasScreenState();
@@ -104,20 +109,21 @@ class _GestaoFaltasScreenState extends State<GestaoFaltasScreen> {
   Widget _buildListaDisciplinasAluno(String alunoUid) {
     return Column(
       children: [
-        ListTile(
-          tileColor: Colors.grey.shade200,
-          leading: const Icon(Icons.arrow_back),
-          title: const Text('Voltar para a lista de alunos'),
-          onTap: () {
-            setState(() {
-              _alunoSelecionadoId = null;
-              _alunoSelecionadoNome = null;
-            });
-          },
-        ),
+        if (widget.alunoUid == null)
+          ListTile(
+            tileColor: Colors.grey.shade200,
+            leading: const Icon(Icons.arrow_back),
+            title: const Text('Voltar para a lista de alunos'),
+            onTap: () {
+              setState(() {
+                _alunoSelecionadoId = null;
+                _alunoSelecionadoNome = null;
+              });
+            },
+          ),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: _firestoreService.getDisciplinasDoAluno(alunoUid),
+            stream: _firestoreService.getDisciplinas(alunoUid),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Center(
@@ -179,41 +185,50 @@ class _GestaoFaltasScreenState extends State<GestaoFaltasScreen> {
                               ],
                             ),
                           ),
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.remove_circle_outline,
-                                    color: Colors.red),
-                                onPressed: faltas > 0
-                                    ? () {
-                                  _firestoreService.atualizarFaltasAluno(
-                                    alunoUid: alunoUid,
-                                    disciplinaId: doc.id,
-                                    novasFaltas: faltas - 1,
-                                  );
-                                }
-                                    : null,
-                              ),
-                              Text(
-                                '$faltas',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                          if (widget.isProfessor)
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline,
+                                      color: Colors.red),
+                                  onPressed: faltas > 0
+                                      ? () {
+                                    _firestoreService.atualizarFaltas(
+                                      alunoUid,
+                                      doc.id,
+                                      faltas - 1,
+                                    );
+                                  }
+                                      : null,
                                 ),
+                                Text(
+                                  '$faltas',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.add_circle_outline,
+                                      color: Colors.green),
+                                  onPressed: () {
+                                    _firestoreService.atualizarFaltas(
+                                      alunoUid,
+                                      doc.id,
+                                      faltas + 1,
+                                    );
+                                  },
+                                ),
+                              ],
+                            )
+                          else
+                            Text(
+                              '$faltas',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.add_circle_outline,
-                                    color: Colors.green),
-                                onPressed: () {
-                                  _firestoreService.atualizarFaltasAluno(
-                                    alunoUid: alunoUid,
-                                    disciplinaId: doc.id,
-                                    novasFaltas: faltas + 1,
-                                  );
-                                },
-                              ),
-                            ],
-                          )
+                            ),
                         ],
                       ),
                     ),

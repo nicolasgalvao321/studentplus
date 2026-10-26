@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firestore_service.dart';
 import 'login_screen.dart';
-import 'gestao_faltas_screen.dart';
+import 'disciplinas_screen.dart';
 
 class ResponsavelHomeScreen extends StatefulWidget {
   const ResponsavelHomeScreen({super.key});
@@ -33,6 +33,7 @@ class _ResponsavelHomeScreenState extends State<ResponsavelHomeScreen> {
           _alunoId = alunoDoc.id;
           _nomeAluno = alunoDoc.get('nome') ?? 'Aluno Vinculado';
         });
+        await _firestoreService.inicializarMensalidadesExemplo(_alunoId!);
       } else {
         setState(() => _nomeAluno = 'Nenhum aluno vinculado');
       }
@@ -119,7 +120,12 @@ class _ResponsavelHomeScreenState extends State<ResponsavelHomeScreen> {
                     if (_alunoId != null) {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => GestaoFaltasScreen(alunoUid: _alunoId!)),
+                        MaterialPageRoute(
+                          builder: (_) => DisciplinasScreen(
+                            alunoUid: _alunoId!,
+                            isProfessor: false,
+                          ),
+                        ),
                       );
                     }
                   },
@@ -218,28 +224,76 @@ class _ResponsavelHomeScreenState extends State<ResponsavelHomeScreen> {
     );
   }
 
+  // Modal de Mensalidades (SEM OS BOTÕES DE ANO NA PARTE SUPERIOR)
   void _abrirModalFinanceiro(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
+        height: MediaQuery.of(context).size.height * 0.75,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Financeiro & Mensalidades', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            const Text('Acompanhe os boletos e comprovantes de pagamento.', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 4),
+            const Text('Acompanhe os boletos e efetue pagamentos em tempo real.', style: TextStyle(color: Colors.grey, fontSize: 12)),
             const Divider(),
             Expanded(
-              child: ListView(
-                children: [
-                  _buildItemMensalidade('Mensalidade - Outubro', 'R\$ 450,00', 'Vencimento: 10/10/2026', 'PAGO', Colors.green, context),
-                  _buildItemMensalidade('Mensalidade - Novembro', 'R\$ 450,00', 'Vencimento: 10/11/2026', 'PENDENTE', Colors.orange, context),
-                  _buildItemMensalidade('Mensalidade - Dezembro', 'R\$ 450,00', 'Vencimento: 10/12/2026', 'A VENCER', Colors.blue, context),
-                ],
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _firestoreService.getMensalidadesDoAluno(_alunoId ?? ''),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  var docs = snapshot.data!.docs;
+
+                  if (docs.isEmpty) {
+                    return const Center(child: Text('Nenhuma mensalidade cadastrada.'));
+                  }
+
+                  return ListView.builder(
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      var doc = docs[index];
+                      var data = doc.data() as Map<String, dynamic>;
+                      String docId = doc.id;
+                      String status = (data['status'] ?? 'pendente').toString().toLowerCase();
+                      double valor = (data['valor'] ?? 0.0).toDouble();
+                      String titulo = data['titulo'] ?? 'Mensalidade';
+                      String vencimento = data['vencimento'] ?? '';
+
+                      Color corStatus = Colors.orange;
+                      String statusText = 'PENDENTE';
+
+                      if (status == 'pago') {
+                        corStatus = Colors.green;
+                        statusText = 'PAGO';
+                      } else if (status == 'a vencer') {
+                        corStatus = Colors.blue;
+                        statusText = 'A VENCER';
+                      }
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        child: ListTile(
+                          leading: Icon(Icons.receipt_long, color: corStatus),
+                          title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('R\$ ${valor.toStringAsFixed(2)} • Vencimento: $vencimento'),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: corStatus.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                            child: Text(statusText, style: TextStyle(color: corStatus, fontWeight: FontWeight.bold, fontSize: 11)),
+                          ),
+                          onTap: () {
+                            if (status != 'pago') {
+                              _simularPagamentoModal(context, docId, titulo, valor);
+                            }
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],
@@ -248,42 +302,27 @@ class _ResponsavelHomeScreenState extends State<ResponsavelHomeScreen> {
     );
   }
 
-  Widget _buildItemMensalidade(String titulo, String valor, String vencimento, String status, Color corStatus, BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: ListTile(
-        leading: Icon(Icons.receipt_long, color: corStatus),
-        title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('$valor • $vencimento'),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(color: corStatus.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-          child: Text(status, style: TextStyle(color: corStatus, fontWeight: FontWeight.bold, fontSize: 11)),
-        ),
-        onTap: () {
-          if (status == 'PENDENTE') {
-            _simularPagamentoModal(context, titulo, valor);
-          }
-        },
-      ),
-    );
-  }
-
-  void _simularPagamentoModal(BuildContext context, String titulo, String valor) {
+  void _simularPagamentoModal(BuildContext context, String docId, String titulo, double valor) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Simular Pagamento: $titulo'),
-        content: Text('Valor: $valor\n\nDeseja simular o pagamento via PIX para testes do aplicativo?'),
+        content: Text('Valor: R\$ ${valor.toStringAsFixed(2)}\n\nDeseja simular o pagamento via PIX para atualizar o status para PAGO em tempo real?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pagamento simulado com sucesso! Status atualizado.')));
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            onPressed: () async {
+              await _firestoreService.simularPagamentoMensalidade(docId);
+              if (mounted) Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Pagamento confirmado com sucesso! Status atualizado para PAGO.'),
+                  backgroundColor: Colors.green,
+                ),
+              );
             },
-            child: const Text('Simular Pagamento (PIX)'),
+            child: const Text('Confirmar Pagamento (PIX)'),
           ),
         ],
       ),
