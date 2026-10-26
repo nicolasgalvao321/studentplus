@@ -123,6 +123,9 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
                     return;
                   }
 
+                  final messenger = ScaffoldMessenger.of(context);
+                  final nav = Navigator.of(context);
+
                   await _firestoreService.enviarRecado(
                     titulo: titulo,
                     conteudo: conteudo,
@@ -131,8 +134,8 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
                   );
 
                   if (mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    nav.pop();
+                    messenger.showSnackBar(
                       const SnackBar(
                           content: Text('Recado publicado com sucesso!')),
                     );
@@ -185,8 +188,8 @@ class _GestaoRecadosScreenState extends State<GestaoRecadosScreen> {
 
               final String titulo = data['titulo'] ?? '';
               final String conteudo = data['conteudo'] ?? '';
-              final String autorNome = data['autorNome'] ?? 'Professor';
-              final String link = data['link'] ?? '';
+              final String autorNome = data['autorNome'] ?? data['autor'] ?? 'Professor';
+              final String link = data['link'] ?? data['linkAnexo'] ?? '';
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),

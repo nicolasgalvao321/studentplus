@@ -3,7 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/firestore_service.dart';
 
 class GestaoFaltasScreen extends StatefulWidget {
-  const GestaoFaltasScreen({super.key});
+  final String? alunoUid;
+
+  const GestaoFaltasScreen({super.key, this.alunoUid});
 
   @override
   State<GestaoFaltasScreen> createState() => _GestaoFaltasScreenState();
@@ -13,6 +15,15 @@ class _GestaoFaltasScreenState extends State<GestaoFaltasScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   String? _alunoSelecionadoId;
   String? _alunoSelecionadoNome;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.alunoUid != null && widget.alunoUid!.isNotEmpty) {
+      _alunoSelecionadoId = widget.alunoUid;
+      _alunoSelecionadoNome = 'Aluno';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

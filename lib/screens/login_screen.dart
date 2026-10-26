@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'home_screen.dart';
 import 'professor_home_screen.dart';
+import 'responsavel_home_screen.dart';
+import 'funcionario_home_screen.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,62 +17,69 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
-  final _nomeController = TextEditingController();
-
-  bool _isLogin = true; // Alterna entre Login (true) e Registo (false)
-  String _roleSelecionado = 'aluno'; // Perfil padrão no registo
+  final _formKey = GlobalKey<FormState>();
   bool _carregando = false;
 
-  final AuthService _authService = AuthService();
-
-  void _submeter() async {
-    final email = _emailController.text.trim();
-    final senha = _senhaController.text.trim();
-    final nome = _nomeController.text.trim();
-
-    if (email.isEmpty || senha.isEmpty || (!_isLogin && nome.isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos.')),
-      );
-      return;
-    }
+  Future<void> _fazerLogin() async {
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _carregando = true);
 
     try {
-      if (_isLogin) {
-        // --- FLUXO DE LOGIN ---
-        await _authService.login(email, senha);
-      } else {
-        // --- FLUXO DE REGISTO (Guarda o perfil escolhido) ---
-        await _authService.cadastrar(
-          email: email,
-          password: senha,
-          nome: nome,
-          role: _roleSelecionado,
-        );
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _senhaController.text.trim(),
+      );
+
+      String uid = userCredential.user!.uid;
+
+      DocumentSnapshot userDoc =
+      await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      String role = 'aluno';
+      if (userDoc.exists && userDoc.data() != null) {
+        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+        role = data['role'] ?? 'aluno';
       }
 
-      // Redireciona de acordo com o papel no Firestore
-      String role = await _authService.getUserRole();
       if (!mounted) return;
 
+      Widget proximaTela;
       if (role == 'professor') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const ProfessorHomeScreen()),
-        );
+        proximaTela = const ProfessorHomeScreen();
+      } else if (role == 'responsavel') {
+        proximaTela = const ResponsavelHomeScreen();
+      } else if (role == 'funcionario' || role == 'secretaria') {
+        proximaTela = const FuncionarioHomeScreen();
       } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        proximaTela = const HomeScreen();
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => proximaTela),
+      );
+    } on FirebaseAuthException catch (e) {
+      String mensagem = 'Erro ao entrar. Verifique seus dados.';
+      if (e.code == 'user-not-found') {
+        mensagem = 'Usuário não encontrado.';
+      } else if (e.code == 'wrong-password') {
+        mensagem = 'Senha incorreta.';
+      } else if (e.code == 'invalid-email') {
+        mensagem = 'E-mail em formato inválido.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(mensagem), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao realizar login: $e'), backgroundColor: Colors.red),
+        );
+      }
     } finally {
       if (mounted) setState(() => _carregando = false);
     }
@@ -77,123 +88,108 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0E3B68),
+      backgroundColor: Colors.grey.shade100,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-          child: Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _isLogin ? 'Student+' : 'Criar Conta',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0E3B68),
-                    ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Icon(
+                  Icons.school_rounded,
+                  size: 80,
+                  color: Colors.blueAccent,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'StudentPlus',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blueAccent,
                   ),
-                  const SizedBox(height: 20),
+                ),
+                const Text(
+                  'Gestão Escolar Conectada',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                const SizedBox(height: 36),
 
-                  // Campo Nome (apenas se for Registo)
-                  if (!_isLogin) ...[
-                    TextField(
-                      controller: _nomeController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nome Completo',
-                        prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'E-mail',
+                    prefixIcon: Icon(Icons.email),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.isEmpty) return 'Informe o e-mail';
+                    if (!val.contains('@')) return 'E-mail inválido';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _senhaController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Senha',
+                    prefixIcon: Icon(Icons.lock),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.isEmpty) return 'Informe a senha';
+                    if (val.length < 6) return 'Mínimo de 6 caracteres';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+
+                SizedBox(
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // Campo Email
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'E-mail',
-                      prefixIcon: Icon(Icons.email),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Campo Senha
-                  TextField(
-                    controller: _senhaController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Palavra-passe',
-                      prefixIcon: Icon(Icons.lock),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Seleção de Perfil (apenas se for Registo)
-                  if (!_isLogin) ...[
-                    DropdownButtonFormField<String>(
-                      value: _roleSelecionado,
-                      decoration: const InputDecoration(
-                        labelText: 'Eu sou:',
-                        prefixIcon: Icon(Icons.badge),
-                        border: OutlineInputBorder(),
+                    onPressed: _carregando ? null : _fazerLogin,
+                    child: _carregando
+                        ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
                       ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'aluno',
-                          child: Text('Aluno'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'professor',
-                          child: Text('Professor'),
-                        ),
-                      ],
-                      onChanged: (novoValor) {
-                        if (novoValor != null) {
-                          setState(() => _roleSelecionado = novoValor);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Botão Entrar / Cadastrar
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: _carregando ? null : _submeter,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0E3B68),
-                      ),
-                      child: _carregando
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : Text(
-                        _isLogin ? 'ENTRAR' : 'REGISTAR',
-                        style: const TextStyle(color: Colors.white),
-                      ),
+                    )
+                        : const Text(
+                      'ENTRAR',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
+                ),
+                const SizedBox(height: 16),
 
-                  // Alternar entre Login e Cadastro
-                  TextButton(
-                    onPressed: () {
-                      setState(() => _isLogin = !_isLogin);
-                    },
-                    child: Text(
-                      _isLogin
-                          ? 'Não tem conta? Registe-se'
-                          : 'Já tem conta? Faça Login',
-                    ),
-                  ),
-                ],
-              ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                    );
+                  },
+                  child: const Text('Não tem uma conta? Cadastre-se'),
+                ),
+              ],
             ),
           ),
         ),

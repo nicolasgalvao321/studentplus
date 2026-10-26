@@ -211,6 +211,9 @@ class _TarefasScreenState extends State<TarefasScreen> {
                         return;
                       }
 
+                      final messenger = ScaffoldMessenger.of(context);
+                      final nav = Navigator.of(context);
+
                       await _firestoreService.adicionarTarefa(
                         uid: widget.alunoUid,
                         titulo: titulo,
@@ -220,8 +223,8 @@ class _TarefasScreenState extends State<TarefasScreen> {
                       );
 
                       if (mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        nav.pop();
+                        messenger.showSnackBar(
                           const SnackBar(
                               content: Text('Tarefa lançada com sucesso!')),
                         );

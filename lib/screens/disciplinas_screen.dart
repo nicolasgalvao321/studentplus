@@ -110,6 +110,9 @@ class _DisciplinasScreenState extends State<DisciplinasScreen> {
                     return;
                   }
 
+                  final messenger = ScaffoldMessenger.of(context);
+                  final nav = Navigator.of(context);
+
                   await _firestoreService.adicionarDisciplina(
                     uid: widget.alunoUid,
                     materia: materia.isEmpty ? 'Geral' : materia,
@@ -119,8 +122,8 @@ class _DisciplinasScreenState extends State<DisciplinasScreen> {
                   );
 
                   if (mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    nav.pop();
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('Disciplina cadastrada!')),
                     );
                   }

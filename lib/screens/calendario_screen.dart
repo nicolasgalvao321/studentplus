@@ -130,6 +130,9 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                         return;
                       }
 
+                      final messenger = ScaffoldMessenger.of(context);
+                      final nav = Navigator.of(context);
+
                       final userDoc = await FirebaseFirestore.instance
                           .collection('users')
                           .doc(_authService.currentUser?.uid)
@@ -147,8 +150,8 @@ class _CalendarioScreenState extends State<CalendarioScreen> {
                       );
 
                       if (mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        nav.pop();
+                        messenger.showSnackBar(
                           const SnackBar(
                               content: Text('Evento adicionado com sucesso!')),
                         );

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
 import 'disciplinas_screen.dart';
@@ -12,6 +14,8 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String alunoUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     return Scaffold(
       backgroundColor: const Color(0xFF0E3B68),
       appBar: AppBar(
@@ -36,7 +40,7 @@ class HomeScreen extends StatelessWidget {
       body: Column(
         children: [
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20.0),
+            padding: EdgeInsets.symmetric(vertical: 12.0),
             child: Text(
               'Painel do Aluno',
               style: TextStyle(
@@ -48,89 +52,148 @@ class HomeScreen extends StatelessWidget {
           ),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.all(24),
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
               ),
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
+              child: Column(
                 children: [
-                  _buildMenuCard(
-                    context: context,
-                    title: 'DISCIPLINAS',
-                    icon: Icons.book,
-                    color: Colors.blue,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                          const DisciplinasScreen(isProfessor: false),
-                        ),
-                      );
-                    },
+                  Card(
+                    elevation: 2,
+                    color: Colors.blue.shade50,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.badge, color: Colors.blueAccent, size: 32),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Seu Código de Vínculo (ID):',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                SelectableText(
+                                  alunoUid,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy, color: Colors.blueAccent),
+                            tooltip: 'Copiar ID',
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: alunoUid));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('ID copiado! Envie para seus pais/responsáveis.'),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  _buildMenuCard(
-                    context: context,
-                    title: 'TAREFAS',
-                    icon: Icons.task_alt,
-                    color: Colors.orange,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                          const TarefasScreen(isProfessor: false),
+                  const SizedBox(height: 16),
+
+                  Expanded(
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      children: [
+                        _buildMenuCard(
+                          context: context,
+                          title: 'DISCIPLINAS',
+                          icon: Icons.book,
+                          color: Colors.blue,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                const DisciplinasScreen(isProfessor: false),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                  _buildMenuCard(
-                    context: context,
-                    title: 'RESUMO',
-                    icon: Icons.pie_chart,
-                    color: Colors.purple,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ResumoScreen(),
+                        _buildMenuCard(
+                          context: context,
+                          title: 'TAREFAS',
+                          icon: Icons.task_alt,
+                          color: Colors.orange,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                const TarefasScreen(isProfessor: false),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                  _buildMenuCard(
-                    context: context,
-                    title: 'RECADOS',
-                    icon: Icons.mark_chat_unread_outlined,
-                    color: Colors.amber.shade800,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                          const GestaoRecadosScreen(isProfessor: false),
+                        _buildMenuCard(
+                          context: context,
+                          title: 'RESUMO',
+                          icon: Icons.pie_chart,
+                          color: Colors.purple,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ResumoScreen(),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
-                  _buildMenuCard(
-                    context: context,
-                    title: 'CALENDÁRIO',
-                    icon: Icons.calendar_month,
-                    color: Colors.deepOrange,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                          const CalendarioScreen(isProfessor: false),
+                        _buildMenuCard(
+                          context: context,
+                          title: 'RECADOS',
+                          icon: Icons.mark_chat_unread_outlined,
+                          color: Colors.amber.shade800,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                const GestaoRecadosScreen(isProfessor: false),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
+                        _buildMenuCard(
+                          context: context,
+                          title: 'CALENDÁRIO',
+                          icon: Icons.calendar_month,
+                          color: Colors.deepOrange,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                const CalendarioScreen(isProfessor: false),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

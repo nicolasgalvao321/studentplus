@@ -7,7 +7,7 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(
         seedColor: const Color(0xFF0E3B68),
         secondary: const Color(0xFFFF6B00), // Laranja de destaque
-        background: const Color(0xFFF5F7FA), // Cor de fundo
+        surface: const Color(0xFFF5F7FA), // Cor de fundo
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Color(0xFF0E3B68),
